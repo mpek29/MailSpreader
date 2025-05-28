@@ -43,9 +43,6 @@ mailspreader/
 │   ├── website_parser.py    # Email extraction from websites
 │   ├── summarizer.py        # Summary generation logic
 │   └── exporter.py          # Spreadsheet generation
-├── tests/                   # Unit tests
-│   ├── __init__.py
-│   └── test_linkedin_scraper.py
 ├── assets/                  # Images and media for documentation
 │   └── img/
 ├── run.sh                   # Shell script to run the main program
