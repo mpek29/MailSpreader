@@ -38,7 +38,7 @@ def main() -> None:
     emails = extract_contact_emails(company_websites)
 
     # Step 4: Generate polished summaries for company descriptions
-    summaries = generate_summaries(company_about_texts, lang=lang)
+    summaries = generate_summaries(company_about_texts)
     
     # Step 5: Export compiled data to spreadsheet format for Thunderbird
     export_to_spreadsheet(company_names, summaries, emails)

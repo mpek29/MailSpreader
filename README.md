@@ -29,15 +29,15 @@ The **MailSpreader** is an open-source Python project that automates the creatio
 
 | Company Name | Business Summary                          | Email                                             |
 | ------------ | ----------------------------------------- | ------------------------------------------------- |
-| Example Corp | Specialized in renewable energy solutions | [contact@example.com](mailto:contact@example.com) |
-| TechSoft Ltd | Specialized in SaaS for retail management | [info@techsoft.io](mailto:info@techsoft.io)       |
+| Example Corp | specialises in renewable energy solutions | [contact@example.com](mailto:contact@example.com) |
+| TechSoft Ltd | specialises in SaaS for retail management | [info@techsoft.io](mailto:info@techsoft.io)       |
 
 ## 📁 Project Structure
 
 ```
 mailspreader/
 ├── data/                     # Input/output data files
-│   └── prospect_list.xlsx
+│   └── prospect_list.csv
 ├── mailspreader/            # Core package
 │   ├── linkedin_scraper.py  # Functions to scrape LinkedIn profiles
 │   ├── website_parser.py    # Email extraction from websites
