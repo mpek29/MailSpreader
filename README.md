@@ -45,10 +45,12 @@ mailspreader/
 │   └── exporter.py          # Spreadsheet generation
 ├── assets/                  # Images and media for documentation
 │   └── img/
+├── run.bat                  # Windows shell script to run the main program
 ├── run.sh                   # Shell script to run the main program
 ├── .gitignore
 ├── LICENSE
 ├── README.md
+├── requirements.txt
 └── main.py                  # Entry-point script
 ```
 
