@@ -20,27 +20,12 @@ def is_linkedin_profile_url(url: str) -> bool:
     return bool(re.match(linkedin_profile_pattern, url))
 
 
-def print_progress_bar(
-    iteration: int, total: int, prefix: str = "", bar_length: int = 50
-) -> None:
-    """
-    Render a progress bar in the terminal.
-
-    Args:
-        iteration (int): Current iteration count (1-based).
-        total (int): Total number of iterations.
-        prefix (str): Optional string to prefix the progress bar.
-        bar_length (int): Length of the progress bar in characters.
-    """
+def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length: int = 50) -> None:
     progress_fraction = iteration / total
     filled_length = int(bar_length * progress_fraction)
     bar = "█" * filled_length + "-" * (bar_length - filled_length)
     percent = progress_fraction * 100
-    print(
-        f"\r{prefix} |{bar}| {percent:6.2f}% ({iteration}/{total})",
-        end="",
-        flush=True,
-    )
+    print(f"\r{prefix} |{bar}| {percent:6.2f}% ({iteration}/{total})", end="", flush=True)
     if iteration == total:
         print()
 
@@ -154,7 +139,7 @@ def extract_company_metadata(profile_urls: list[str]) -> tuple[list[str], list[s
             except NoSuchElementException:
                 company_about_texts.append("")
 
-            print_progress_bar(iteration=idx, total=len(profile_urls), prefix="Extraction Progress:", bar_length=40)
+            print_progress_bar(iteration=idx, total=len(profile_urls), prefix="Extraction Progress:")
     finally:
         driver.quit()
 
