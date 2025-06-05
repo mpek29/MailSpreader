@@ -69,7 +69,7 @@ def main() -> None:
 
     # Step 1
     if resume_step <= 1:
-        linkedin_search_base_url = input("Enter the base LinkedIn search URL: ").strip()
+        linkedin_search_base_url = input("Enter the base LinkedIn search URL (e.g., https://www.linkedin.com/search/results/companies/?companyHqGeo=%5B%22104738515%22%5D&keywords=electronics&origin=FACETED_SEARCH&page=): ").strip()
 
         while True:
             try:
@@ -78,8 +78,9 @@ def main() -> None:
             except ValueError:
                 print("Please enter a valid integer for max_pages.")
 
-        company_item_css = input("Enter the CSS selector for company items: ").strip()
-        company_link_css = input("Enter the CSS selector for company links: ").strip()
+        company_item_css = input("Enter the CSS selector for company items (e.g., li.rzkLCICBGYLAzTnzfmtIEgVSqcpg): ").strip()
+
+        company_link_css = input("Enter the CSS selector for company links (e.g., a.pRsNlddsWvfIvSJxKEVQiVsNRgFbtHIxck): ").strip()
         lang = input("Enter the language for summaries (e.g., 'en' or 'fr'): ").strip().lower()
 
         input_params = {

@@ -81,16 +81,14 @@ def generate_summaries(descriptions: list[str], max_retries: int = 3) -> list[st
             extracted_text = extract_priority_phrase(assistant_response)
 
             if extracted_text is None:
-                print(f"[Retry {attempt}] No matching phrase found, retrying...")
                 time.sleep(0.5)  # Petite pause avant nouvelle tentative
 
         if extracted_text is None:
             # Si échec après toutes les tentatives, on conserve la réponse brute
             extracted_text = assistant_response
 
-        print(extracted_text)
-        summaries.append(extracted_text)
+        summaries.append(extracted_text.lower())
 
-        print_progress_bar(current=idx + 1, total=len(descriptions), prefix="Summarizing")
+        print_progress_bar(iteration=idx + 1, total=len(descriptions), prefix="Summarizing")
 
     return summaries
