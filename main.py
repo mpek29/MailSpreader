@@ -132,11 +132,31 @@ def main() -> None:
     # Step 4
     if resume_step <= 4:
         print(f"Step 4: {steps[4]} ...")
-        summaries = generate_summaries(company_about_texts, lang=lang)
+    
+        # Préparer les textes valides et leur index
+        valid_texts = []
+        valid_indexes = []
+        for i, (email, about_text) in enumerate(zip(emails, company_about_texts)):
+            if email.strip():
+                valid_texts.append(about_text)
+                valid_indexes.append(i)
+    
+        # Générer les résumés uniquement pour les entrées avec email non vide
+        if valid_texts:
+            generated_summaries = generate_summaries(valid_texts, lang=lang)
+        else:
+            generated_summaries = []
+    
+        # Réinsérer les résumés aux bons index, sinon chaîne vide
+        summaries = ["" for _ in company_about_texts]
+        for idx, summary in zip(valid_indexes, generated_summaries):
+            summaries[idx] = summary
+    
         save_list_to_csv(SUMMARIES_CSV, summaries)
     else:
         summaries = load_list_from_csv(SUMMARIES_CSV)
         print(f"Loaded {len(summaries)} summaries from saved data.")
+
 
     # Step 5
     print(f"Step 5: {steps[5]} ...")
