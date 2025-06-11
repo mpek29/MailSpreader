@@ -34,34 +34,41 @@ def extract_priority_phrase(text: str) -> str:
 
     return None  # Retourne None si aucun motif trouvé
 
-def generate_summaries(descriptions: list[str], max_retries: int = 3) -> list[str]:
+def generate_summaries(descriptions: list[str], lang: str = "en", max_retries: int = 3) -> list[str]:
     """
-    Generate one-sentence summaries for a list of company descriptions.
+    Generate one-sentence summaries for a list of company descriptions,
+    using either English or French prompting based on `lang`.
     """
     pipe = pipeline(
         "text-generation",
         model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        torch_dtype=torch.bfloat16,
+        torch_dtype="auto",  # torch.bfloat16 peut poser problème selon la machine
         device_map="auto"
     )
+
     summaries = []
 
     for idx, description in enumerate(descriptions):
         clean_description = re.sub(r'\s+', ' ', description)
 
+        if lang == "fr":
+            system_msg = "Tu es un assistant qui génère des phrases d'introduction pour des lettres de motivation à partir de descriptions d'entreprise."
+            user_msg = (
+                "Crée une phrase qui commence par "
+                "\"Je suis impatient de commencer mon stage au sein de votre entreprise, qui est spécialisée dans\" "
+                f"à partir de la description suivante : \"{clean_description}\""
+            )
+        else:  # default to English
+            system_msg = "You are a chatbot that generates introductory phrases for cover letters based on company descriptions."
+            user_msg = (
+                "Create a sentence beginning with "
+                "\"I'm looking forward to starting my work placement with your company, which specializes in\" "
+                f"based on the following description: \"{clean_description}\""
+            )
+
         messages = [
-            {
-                "role": "system",
-                "content": "You are a chatbot specialized in generating cover letter introductions based on company resumes."
-            },
-            {
-                "role": "user",
-                "content": (
-                    "Create a sentence beginning with "
-                    "\"I'm looking forward to starting my work placement with your company, which specializes in\" "
-                    f"based on the following resume: \"{clean_description}\""
-                ),
-            },
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg},
         ]
 
         extracted_text = None
@@ -70,24 +77,34 @@ def generate_summaries(descriptions: list[str], max_retries: int = 3) -> list[st
         while extracted_text is None and attempt < max_retries:
             attempt += 1
 
-            prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            outputs = pipe(prompt, max_new_tokens=100, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+            try:
+                prompt = pipe.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
+                outputs = pipe(
+                    prompt,
+                    max_new_tokens=100,
+                    do_sample=True,
+                    temperature=0.7,
+                    top_k=50,
+                    top_p=0.95
+                )
+                generated_text = outputs[0]['generated_text']
 
-            generated_text = outputs[0]['generated_text']
+                assistant_match = re.search(r'<\|assistant\|>(.*)', generated_text, flags=re.DOTALL)
+                assistant_response = assistant_match.group(1).strip() if assistant_match else generated_text.strip()
 
-            assistant_match = re.search(r'<\|assistant\|>(.*)', generated_text, flags=re.DOTALL)
-            assistant_response = assistant_match.group(1).strip() if assistant_match else generated_text.strip()
-
-            extracted_text = extract_priority_phrase(assistant_response)
-
-            if extracted_text is None:
-                time.sleep(0.5)  # Petite pause avant nouvelle tentative
+                extracted_text = extract_priority_phrase(assistant_response)
+                if not extracted_text:
+                    time.sleep(0.5)
+            except Exception as e:
+                print(f"Error during generation: {e}")
+                time.sleep(1)
 
         if extracted_text is None:
-            # Si échec après toutes les tentatives, on conserve la réponse brute
             extracted_text = assistant_response
 
-        summaries.append(extracted_text.lower())
+        summaries.append(extracted_text)
 
         print_progress_bar(iteration=idx + 1, total=len(descriptions), prefix="Summarizing")
 
