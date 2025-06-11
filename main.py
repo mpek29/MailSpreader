@@ -132,7 +132,7 @@ def main() -> None:
     # Step 4
     if resume_step <= 4:
         print(f"Step 4: {steps[4]} ...")
-        summaries = generate_summaries(company_about_texts)
+        summaries = generate_summaries(company_about_texts, lang)
         save_list_to_csv(SUMMARIES_CSV, summaries)
     else:
         summaries = load_list_from_csv(SUMMARIES_CSV)
