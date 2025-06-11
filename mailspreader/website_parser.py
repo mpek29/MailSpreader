@@ -58,7 +58,15 @@ def extract_contact_emails(website_urls: list[str]) -> list[str]:
         return matches[0]
 
     for i in range(len(website_urls)):
-        normalized_url = website_urls[i] if website_urls[i].startswith(("http://", "https://")) else f"http://{website_urls[i]}"
+        url = website_urls[i]
+
+        # Skip LinkedIn URLs
+        if "linkedin.com" in url:
+            extracted_emails.append("")
+            print_progress_bar(iteration=i+1, total=len(website_urls), prefix="Extract email Progress:")
+            continue
+
+        normalized_url = url if url.startswith(("http://", "https://")) else f"http://{url}"
         parsed_url = urlparse(normalized_url)
         netloc_with_www = parsed_url.netloc.split(':')[0]
         netloc_no_www = re.sub(r"^www\.", "", netloc_with_www)
