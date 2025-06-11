@@ -12,16 +12,26 @@ def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length:
     if iteration == total:
         print()
 
-def extract_priority_phrase(text: str) -> str:
+def extract_priority_phrase(text: str, lang: str = "en") -> str:
     """
-    Extract key phrase with prioritization from assistant response.
+    Extract a key phrase from assistant response based on language.
     """
-    primary_patterns = [
-        r'\b(specializes in|specializing in|including)\s+[^.!?,"]+'
-    ]
-    secondary_patterns = [
-        r'\b(a reputable|a leading|a company that|a\s+[^.!?,"]*?leader in)\s+[^.!?,"]+'
-    ]
+
+    if lang == "fr":
+        primary_patterns = [
+            r'\b(spécialisée dans|spécialisant dans|y compris)\s+[^.!?,"]+'
+        ]
+        secondary_patterns = [
+            r'\b(une entreprise réputée|un leader|une entreprise qui|un\s+[^.!?,"]*?leader dans)\s+[^.!?,"]+'
+        ]
+    else:  # default to English
+        primary_patterns = [
+            r'\b(specializes in|specializing in|including)\s+[^.!?,"]+'
+        ]
+        secondary_patterns = [
+            r'\b(a reputable|a leading|a company that|a\s+[^.!?,"]*?leader in)\s+[^.!?,"]+'
+        ]
+
     for pattern in primary_patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
@@ -32,7 +42,8 @@ def extract_priority_phrase(text: str) -> str:
         if match:
             return match.group(0).strip().strip('"')
 
-    return None  # Retourne None si aucun motif trouvé
+    return None
+
 
 def generate_summaries(descriptions: list[str], lang: str = "en", max_retries: int = 3) -> list[str]:
     """
@@ -94,7 +105,7 @@ def generate_summaries(descriptions: list[str], lang: str = "en", max_retries: i
                 assistant_match = re.search(r'<\|assistant\|>(.*)', generated_text, flags=re.DOTALL)
                 assistant_response = assistant_match.group(1).strip() if assistant_match else generated_text.strip()
 
-                extracted_text = extract_priority_phrase(assistant_response)
+                extracted_text = extract_priority_phrase(assistant_response, lang=lang)
                 if not extracted_text:
                     time.sleep(0.5)
             except Exception as e:
