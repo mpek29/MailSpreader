@@ -48,6 +48,8 @@ def main() -> None:
 
     if existing_steps:
         print("Detected saved data for steps:", existing_steps)
+        for step_num in existing_steps:
+            print(f"Step {step_num}: {steps[step_num]}")
         while True:
             try:
                 resume_step = int(

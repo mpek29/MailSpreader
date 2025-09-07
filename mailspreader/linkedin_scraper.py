@@ -124,7 +124,8 @@ def extract_company_metadata(profile_urls: list[str]) -> tuple[list[str], list[s
 
             # Extract company website URL
             try:
-                website_link = driver.find_element(By.CSS_SELECTOR, "a.link-without-visited-state")
+                website_dd = driver.find_element(By.CSS_SELECTOR, "dd.mb4.t-black--light.text-body-medium")
+                website_link = website_dd.find_element(By.CSS_SELECTOR, "a.link-without-visited-state")
                 company_websites.append(website_link.get_attribute("href"))
             except NoSuchElementException:
                 company_websites.append("")
