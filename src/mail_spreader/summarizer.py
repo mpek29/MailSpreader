@@ -2,6 +2,8 @@ import torch
 from transformers import pipeline
 import re
 import time
+import json
+import yaml
 
 def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length: int = 50) -> None:
     progress_fraction = iteration / total
@@ -120,3 +122,44 @@ def generate_summaries(descriptions: list[str], lang: str = "en", max_retries: i
         print_progress_bar(iteration=idx + 1, total=len(descriptions), prefix="Summarizing")
 
     return summaries
+
+def generate_summaries_extra(yaml_file, json_file_email, json_file_metadata, json_file_summaries):
+    with open(yaml_file, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    # Récupérer les variables
+    lang = config.get("lang", "")
+    with open(json_file_metadata, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
+    company_about_texts = metadata.get("company_about_texts", [])
+
+    # Récupérer la liste des URLs
+    with open(json_file_email, "r", encoding="utf-8") as f:
+        emaildata = json.load(f)
+
+    company_emails = emaildata.get("extracted_emails", [])
+
+    # Préparer les textes valides et leur index
+    valid_texts = []
+    valid_indexes = []
+    for i, (email, about_text) in enumerate(zip(company_emails, company_about_texts)):
+        if email.strip():
+            valid_texts.append(about_text)
+            valid_indexes.append(i)
+
+    # Générer les résumés uniquement pour les entrées avec email non vide
+    generated_summaries = generate_summaries(valid_texts, lang=lang)
+    
+    # Réinsérer les résumés aux bons index, sinon chaîne vide
+    summaries = ["" for _ in company_about_texts]
+    for idx, summary in zip(valid_indexes, generated_summaries):
+        summaries[idx] = summary
+
+    # Préparer les données finales
+    data = {
+        "summaries": summaries
+    }
+
+    # Sauvegarder en JSON
+    with open(json_file_summaries, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)

@@ -1,0 +1,30 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mail_spreader"
+version = "0.1.0"
+description = "Tools to automate LinkedIn-based mailings"
+
+dependencies = [
+  "pyyaml",
+  "typer[all]",
+  "undetected-chromedriver",
+  "selenium",
+  "torch",
+  "transformers",
+  "regex",
+  "sympy",
+  "scikit-learn"
+]
+
+[project.scripts]
+mail-spreader = "grader_tools.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+grader_tools = ["templates/*.typ", "templates/*.html", "templates/img/*.png"]

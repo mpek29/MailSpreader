@@ -1,0 +1,185 @@
+import yaml
+import json
+import re
+from pathlib import Path
+import re
+import time
+import undetected_chromedriver as uc
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+
+duration = 15
+
+def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length: int = 50) -> None:
+    progress_fraction = iteration / total
+    filled_length = int(bar_length * progress_fraction)
+    bar = "█" * filled_length + "-" * (bar_length - filled_length)
+    percent = progress_fraction * 100
+    print(f"\r{prefix} |{bar}| {percent:6.2f}% ({iteration}/{total})", end="", flush=True)
+    if iteration == total:
+        print()
+
+def login(driver,email,password):
+    driver.get("https://www.linkedin.com/checkpoint/lg/sign-in-another-account")
+    print("login starting")
+    # Attendre que l'élément soit présent si nécessaire
+    time.sleep(duration)
+
+    username_input = driver.find_element(By.ID, "username")
+    username_input.send_keys(email)
+
+    
+    password_input = driver.find_element(By.ID, "password")
+    password_input.send_keys(password)
+
+    login_button = driver.find_element(By.CSS_SELECTOR, "button.btn__primary--large.from__button--floating")
+    login_button.click()
+
+    print("login done")
+
+    time.sleep(duration)
+
+def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_urls.json"):
+    """Use LinkedinIn url to make a JSON of LinkedIn company profile URLs"""
+    with open(yaml_file, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    # Récupérer les variables
+    base_search_url = config.get("base_search_url", "")
+    total_pages = config.get("total_pages", 1)
+    company_item_selector = config.get("company_item_selector", "")
+    company_link_selector = config.get("company_link_selector", "")
+    linkedin_email = config.get("linkedin_email", "")
+    linkedin_password = config.get("linkedin_password", "")
+
+    collected_profile_urls = []
+    paginated_urls = [f"{base_search_url}{page}" for page in range(1, total_pages + 1)]
+
+    options = uc.ChromeOptions()
+    options.headless = True
+    # Explicitly set Chrome binary location (update path if needed)
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")
+    driver = uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+
+    login(driver, linkedin_email,linkedin_password)
+
+    try:
+        for page_index, url in enumerate(paginated_urls, start=1):
+            driver.get(url)
+            time.sleep(duration)  # Adjust wait as necessary for page load
+
+            try:
+                company_elements = driver.find_elements(By.CSS_SELECTOR, company_item_selector)
+            except NoSuchElementException:
+                company_elements = []
+
+            for element in company_elements:
+                try:
+                    link_element = element.find_element(By.CSS_SELECTOR, company_link_selector)
+                    href = link_element.get_attribute("href")
+                    if href:
+                        collected_profile_urls.append(href)
+                except NoSuchElementException:
+                    continue
+
+            print_progress_bar(iteration=page_index, total=total_pages, prefix="Scraping Progress:", bar_length=40)
+    finally:
+        driver.quit()
+
+    # Préparer les données finales
+    data = {
+        "collected_profile_urls": collected_profile_urls
+    }
+
+    # Sauvegarder en JSON
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def is_linkedin_profile_url(url: str) -> bool:
+    """
+    Validate if the URL corresponds to a LinkedIn personal or company profile.
+
+    Args:
+        url (str): URL to validate.
+
+    Returns:
+        bool: True if valid LinkedIn profile URL, False otherwise.
+    """
+    linkedin_profile_pattern = r"^https://www\.linkedin\.com/(in|company)/[^/]+/?$"
+    return bool(re.match(linkedin_profile_pattern, url))
+
+def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="metadata.json"):
+    """Extract company names, websites, and about section text from LinkedIn profiles."""
+    with open(yaml_file, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    # Récupérer les variables
+    linkedin_email = config.get("linkedin_email", "")
+    linkedin_password = config.get("linkedin_password", "")
+
+    company_names = []
+    company_websites = []
+    company_about_texts = []
+
+    options = uc.ChromeOptions()
+    options.headless = True
+    driver = uc.Chrome(options=options)
+
+    login(driver,linkedin_email,linkedin_password)
+
+    with open(json_file_profil, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Récupérer la liste des URLs
+    profile_urls = data.get("collected_profile_urls", [])  # adapter la clé si nécessaire
+    
+    try:
+        for idx, profile_url in enumerate(profile_urls, start=1):
+            profile_url = profile_url.strip()
+            if not is_linkedin_profile_url(profile_url):
+                continue
+
+            about_page_url = profile_url.rstrip("/") + "/about/"
+            driver.get(about_page_url)
+            time.sleep(duration)  # Adjust wait as necessary for page load
+
+            # Extract company name (from <h1>)
+            try:
+                heading_element = driver.find_element(By.TAG_NAME, "h1")
+                company_names.append(heading_element.text)
+            except NoSuchElementException:
+                company_names.append("")
+
+            # Extract company website URL
+            try:
+                website_dd = driver.find_element(By.CSS_SELECTOR, "dd.mb4.t-black--light.text-body-medium")
+                website_link = website_dd.find_element(By.CSS_SELECTOR, "a.link-without-visited-state")
+                company_websites.append(website_link.get_attribute("href"))
+            except NoSuchElementException:
+                company_websites.append("")
+
+            # Extract about section paragraph text
+            try:
+                about_paragraph = driver.find_element(
+                    By.CSS_SELECTOR,
+                    "p.break-words.white-space-pre-wrap.t-black--light.text-body-medium",
+                )
+                company_about_texts.append(about_paragraph.text)
+            except NoSuchElementException:
+                company_about_texts.append("")
+
+            print_progress_bar(iteration=idx, total=len(profile_urls), prefix="Extraction Progress:")
+    finally:
+        driver.quit()
+
+    # Préparer les données finales
+    data = {
+        "company_names": company_names,
+        "company_websites": company_websites,
+        "company_about_texts": company_about_texts
+    }
+
+    # Sauvegarder en JSON
+    with open(json_file_metadata, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)

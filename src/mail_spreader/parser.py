@@ -2,15 +2,7 @@ import undetected_chromedriver as uc
 from urllib.parse import urlparse
 import time
 import re
-
-def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length: int = 50) -> None:
-    progress_fraction = iteration / total
-    filled_length = int(bar_length * progress_fraction)
-    bar = "█" * filled_length + "-" * (bar_length - filled_length)
-    percent = progress_fraction * 100
-    print(f"\r{prefix} |{bar}| {percent:6.2f}% ({iteration}/{total})", end="", flush=True)
-    if iteration == total:
-        print()
+import json
 
 def is_google_captcha_url(url: str) -> bool:
     return url.startswith("https://www.google.com/sorry/index?continue=")
@@ -20,8 +12,23 @@ def handle_manual_captcha(driver):
         print("[!] CAPTCHA Google détecté.")
         print("Veuillez le résoudre dans le navigateur, puis appuyez sur Entrée ici pour continuer...")
         input()
+        
+def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length: int = 50) -> None:
+    progress_fraction = iteration / total
+    filled_length = int(bar_length * progress_fraction)
+    bar = "█" * filled_length + "-" * (bar_length - filled_length)
+    percent = progress_fraction * 100
+    print(f"\r{prefix} |{bar}| {percent:6.2f}% ({iteration}/{total})", end="", flush=True)
+    if iteration == total:
+        print()
 
-def extract_contact_emails(website_urls: list[str]) -> list[str]:
+def extract_contact_emails(json_file_metadata, json_file_email="email.json"):
+    with open(json_file_metadata, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Récupérer la liste des URLs
+    website_urls = data.get("company_websites", [])  # adapter la clé si nécessaire
+
     extracted_emails = []
 
     options = uc.ChromeOptions()
@@ -138,4 +145,12 @@ def extract_contact_emails(website_urls: list[str]) -> list[str]:
         print_progress_bar(iteration=i+1, total=len(website_urls), prefix="Extract email Progress:")
 
     driver.quit()
-    return extracted_emails
+
+    # Préparer les données finales
+    data = {
+        "extracted_emails": extracted_emails
+    }
+
+    # Sauvegarder en JSON
+    with open(json_file_email, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
