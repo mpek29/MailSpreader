@@ -4,55 +4,71 @@
 
 ![Main Preview](assets/img/main.png)
 
-The **MailSpreader** is an open-source Python project that automates the creation of a structured spreadsheet used for targeted email campaigns via **Thunderbird**. It collects and processes company information from LinkedIn, extracts relevant details, and formats them into a mailing-ready table.
+**MailSpreader** is a Python command-line tool to automate LinkedIn-based mailings.
+It collects company profiles, extracts metadata, finds emails, generates summaries, and exports data into a spreadsheet-ready format.
 
-## 🎯 Highlights
+## Installation
 
-| 💡 Feature                    | 📌 Description                                                    |
-| ----------------------------- | ----------------------------------------------------------------- |
-| 🎯 **Targeted Lead Scraping** | Collect LinkedIn profiles filtered by topic and location          |
-| 🌐 **Smart Data Extraction**  | Get company websites and summaries from LinkedIn "About" sections |
-| 📧 **Email Retrieval**        | Use Google to discover emails via domain-based queries            |
-| ✍️ **Auto Summary Builder**   | Convert text into business blurbs: "specialized in..."            |
-| 📁 **Mail-Ready Export**      | Generate Thunderbird-compatible spreadsheets                      |
+Clone and install directly from GitHub:
 
-## ⚙️ Workflow Overview
-
-1. **Input Criteria**: Define target themes and locations.
-2. **Profile Collection**: Scrape LinkedIn for matching companies.
-3. **Data Extraction**: Retrieve website and "About" content from each profile.
-4. **Email Retrieval**: Use Google queries to find contact emails tied to domain names.
-5. **Summary Construction**: Parse and rephrase descriptions for clarity and consistency.
-6. **Spreadsheet Generation**: Output all data in a tabular format ready for Thunderbird.
-
-## 📊 Example Spreadsheet Format
-
-| Company Name | Business Summary                          | Email                                             |
-| ------------ | ----------------------------------------- | ------------------------------------------------- |
-| Example Corp | specialises in renewable energy solutions | [contact@example.com](mailto:contact@example.com) |
-| TechSoft Ltd | specialises in SaaS for retail management | [info@techsoft.io](mailto:info@techsoft.io)       |
-
-## 📁 Project Structure
-
+```bash
+pip install git+https://github.com/mpek29/MailSpreader
 ```
-mailspreader/
-├── data/                     # Input/output data files
-│   └── prospect_list.csv
-├── mailspreader/            # Core package
-│   ├── linkedin_scraper.py  # Functions to scrape LinkedIn profiles
-│   ├── website_parser.py    # Email extraction from websites
-│   ├── summarizer.py        # Summary generation logic
-│   └── exporter.py          # Spreadsheet generation
-├── assets/                  # Images and media for documentation
-│   └── img/
-├── run.bat                  # Windows shell script to run the main program
-├── run.sh                   # Shell script to run the main program
-├── .gitignore
-├── LICENSE
-├── README.md
-├── requirements.txt
-└── main.py                  # Entry-point script
+
+## Usage
+
+```bash
+mail-spreader [OPTIONS] COMMAND [ARGS]...
 ```
+
+### Global Options
+
+* `--install-completion` → Install shell completion for the current shell
+* `--show-completion` → Show shell completion script
+* `--help` → Show this message and exit
+
+## Available Commands
+
+| Command                              | Description                                                      |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| `linkedin-url-to-profil-json`        | Convert LinkedIn URLs into a JSON list of company profile URLs   |
+| `profil-url-to-metadata-json`        | Convert company profile URLs into JSON metadata                  |
+| `metadata-json-to-email-json`        | Generate a JSON of emails from metadata JSON                     |
+| `metadata-json-to-summaries-json`    | Generate a JSON of business summaries from metadata and emails   |
+| `metadata-email-json-to-spreadsheet` | Merge metadata, email, and summaries JSON into a CSV spreadsheet |
+
+## Example Workflows
+
+### Convert LinkedIn URLs into JSON
+
+```bash
+mail-spreader linkedin-url-to-profil-json config.yaml -o profiles.json
+```
+
+### Convert profiles JSON into metadata JSON
+
+```bash
+mail-spreader profil-url-to-metadata-json config.yaml profiles.json -o metadata.json
+```
+
+### Extract emails from metadata
+
+```bash
+mail-spreader metadata-json-to-email-json metadata.json -o emails.json
+```
+
+### Generate business summaries
+
+```bash
+mail-spreader metadata-json-to-summaries-json config.yaml metadata.json emails.json -o summaries.json
+```
+
+### Export all data into a spreadsheet
+
+```bash
+mail-spreader metadata-email-json-to-spreadsheet metadata.json emails.json summaries.json -o prospects.csv
+```
+
 
 ## 🌟 License
 
