@@ -10,7 +10,7 @@ description = "Tools to automate LinkedIn-based mailings"
 
 dependencies = [
   "pyyaml",
-  "typer[all]",
+  "typer",  # retirer l'extra [all]
   "undetected-chromedriver",
   "selenium",
   "torch",
@@ -21,10 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mail-spreader = "grader_tools.cli:app"
+mail-spreader = "mail_spreader.cli:app"  # pointer vers le module réel de ton package
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-grader_tools = ["templates/*.typ", "templates/*.html", "templates/img/*.png"]
