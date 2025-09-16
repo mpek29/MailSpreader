@@ -39,11 +39,6 @@ def login(driver,email,password):
 
     time.sleep(duration)
 
-import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
-import time
-
-
 def find_elements_with_text(url, search_text="AvelTek", headless=True, delay=2):
     """
     Ouvre une page avec undetected_chromedriver, recherche les <a> et <li> contenant un texte donné.
