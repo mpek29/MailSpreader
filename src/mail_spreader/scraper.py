@@ -39,6 +39,40 @@ def login(driver,email,password):
 
     time.sleep(duration)
 
+def linkedin_url_creator(yaml_file_industries, yaml_file_url="linkedin_url.yaml"):
+    """Use LinkedinIn url to make a JSON of LinkedIn company profile URLs"""
+    with open(yaml_file_industries, "r", encoding="utf-8") as f:
+        config_industries = yaml.safe_load(f)
+
+    mapping_file = "industries_ids.json"  # contient une liste d'objets { "id": "...", "value": "..." }
+    with open(mapping_file, "r", encoding="utf-8") as mf:
+        mappings_list = json.load(mf)  # liste de dicts
+
+    value_to_id = {item["value"]: item["id"] for item in mappings_list}
+    list_industries = config_industries.get("list_industries", "")
+
+    # Construire le tableau et encoder (version Python)
+    industry_ids = []
+    for name in list_industries:
+        id_val = value_to_id.get(name)
+        if id_val is None:
+            print(f"Warning: pas de mapping pour '{name}'")
+        else:
+            industry_ids.append(str(id_val))
+
+    # Option 1: encoder comme JSON puis URI encodé
+    encoded_industry = urllib.parse.quote(json.dumps(industry_ids))
+
+    # Construire l’URL finale
+    url = (
+        f"https://www.linkedin.com/search/results/companies/?"
+        f"industryCompanyVertical={encoded_industry}"
+        f"&origin=FACETED_SEARCH&sid=_ay"
+    )
+
+    with open(yaml_file_url, "w", encoding="utf-8") as fy:
+        fy.write("base_search_url: " + json.dumps(url) + "\n")
+
 def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_urls.json"):
     """Use LinkedinIn url to make a JSON of LinkedIn company profile URLs"""
     with open(yaml_file, "r", encoding="utf-8") as f:
