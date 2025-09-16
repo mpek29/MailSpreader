@@ -39,6 +39,62 @@ def login(driver,email,password):
 
     time.sleep(duration)
 
+import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+import time
+
+
+def find_elements_with_text(url, search_text="AvelTek", headless=True, delay=2):
+    """
+    Ouvre une page avec undetected_chromedriver, recherche les <a> et <li> contenant un texte donné.
+
+    :param url: URL de la page à charger.
+    :param search_text: Texte à rechercher (sensible à la casse).
+    :param headless: Lance Chrome en mode headless si True.
+    :param delay: Délai d'attente après le chargement de la page (en secondes).
+    :return: Dictionnaire contenant les résultats trouvés.
+    """
+    options = uc.ChromeOptions()
+    if headless:
+        options.headless = True
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")
+
+    driver = uc.Chrome(options=options)
+
+    try:
+        driver.get(url)
+        time.sleep(delay)
+
+        # Chercher dans les balises <a>
+        a_elements = driver.find_elements(By.TAG_NAME, 'a')
+        a_matches = [
+            {
+                'text': a.text.strip(),
+                'classes': a.get_attribute("class").split()
+            }
+            for a in a_elements if search_text in a.text
+        ]
+
+        # Chercher dans les balises <li>
+        li_elements = driver.find_elements(By.TAG_NAME, 'li')
+        li_matches = [
+            {
+                'text': li.text.strip(),
+                'classes': li.get_attribute("class").split()
+            }
+            for li in li_elements if search_text in li.text
+        ]
+
+        return {
+            'a_tags': a_matches,
+            'li_tags': li_matches
+        }
+
+    finally:
+        driver.quit()
+
+
 def linkedin_url_creator(yaml_file_industries, yaml_file_url="linkedin_url.yaml"):
     """Use LinkedinIn url to make a JSON of LinkedIn company profile URLs"""
     with open(yaml_file_industries, "r", encoding="utf-8") as f:
