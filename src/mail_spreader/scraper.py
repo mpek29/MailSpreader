@@ -1,3 +1,4 @@
+import urllib
 import yaml
 import json
 import re
@@ -39,55 +40,47 @@ def login(driver,email,password):
 
     time.sleep(duration)
 
-def find_elements_with_text(url, search_text="AvelTek", headless=True, delay=2):
+def find_elements_with_text(driver):
     """
     Ouvre une page avec undetected_chromedriver, recherche les <a> et <li> contenant un texte donné.
-
-    :param url: URL de la page à charger.
-    :param search_text: Texte à rechercher (sensible à la casse).
-    :param headless: Lance Chrome en mode headless si True.
-    :param delay: Délai d'attente après le chargement de la page (en secondes).
-    :return: Dictionnaire contenant les résultats trouvés.
     """
-    options = uc.ChromeOptions()
-    if headless:
-        options.headless = True
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
 
-    driver = uc.Chrome(options=options)
+    url="https://www.linkedin.com/search/results/companies/?keywords=aveltek&origin=SWITCH_SEARCH_VERTICAL&sid=6Fj"
+    delay=2
+    search_text="AvelTek"
+    driver.get(url)
+    time.sleep(delay)
 
-    try:
-        driver.get(url)
-        time.sleep(delay)
-
-        # Chercher dans les balises <a>
-        a_elements = driver.find_elements(By.TAG_NAME, 'a')
-        a_matches = [
-            {
-                'text': a.text.strip(),
-                'classes': a.get_attribute("class").split()
-            }
-            for a in a_elements if search_text in a.text
-        ]
-
-        # Chercher dans les balises <li>
-        li_elements = driver.find_elements(By.TAG_NAME, 'li')
-        li_matches = [
-            {
-                'text': li.text.strip(),
-                'classes': li.get_attribute("class").split()
-            }
-            for li in li_elements if search_text in li.text
-        ]
-
-        return {
-            'a_tags': a_matches,
-            'li_tags': li_matches
+    # Chercher dans les balises <a>
+    a_elements = driver.find_elements(By.TAG_NAME, 'a')
+    a_matches = [
+        {
+            'text': a.text.strip(),
+            'classes': a.get_attribute("class").split()
         }
+        for a in a_elements if search_text in a.text
+    ]
 
-    finally:
-        driver.quit()
+    # Chercher dans les balises <li>
+    li_elements = driver.find_elements(By.TAG_NAME, 'li')
+    li_matches = [
+        {
+            'text': li.text.strip(),
+            'classes': li.get_attribute("class").split()
+        }
+        for li in li_elements if search_text in li.text
+    ]
+    company_item_selector = li_matches[0]['classes'][0] if li_matches else None
+    print("company_item_selector:", "li."+company_item_selector)
+
+    company_link_selector = a_matches[0]['classes'][0] if a_matches else None
+    print("company_link_selector:", "a."+company_link_selector)
+
+    # Retourner les résultats
+    return {
+        'a_tags': a_matches,
+        'li_tags': li_matches
+    }
 
 
 def linkedin_url_creator(yaml_file_industries, yaml_file_url="linkedin_url.yaml"):
@@ -132,8 +125,6 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
     # Récupérer les variables
     base_search_url = config.get("base_search_url", "")
     total_pages = config.get("total_pages", 1)
-    company_item_selector = config.get("company_item_selector", "")
-    company_link_selector = config.get("company_link_selector", "")
     linkedin_email = config.get("linkedin_email", "")
     linkedin_password = config.get("linkedin_password", "")
 
@@ -148,6 +139,10 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
     driver = uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 
     login(driver, linkedin_email,linkedin_password)
+
+    results = find_elements_with_text(driver)
+    company_item_selector = "li."+results['li_tags'][0]['classes'][0] if results['li_tags'] else None
+    company_link_selector = "a."+results['a_tags'][0]['classes'][0] if results['a_tags'] else None
 
     try:
         for page_index, url in enumerate(paginated_urls, start=1):

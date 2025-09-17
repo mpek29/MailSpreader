@@ -14,25 +14,19 @@ def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length:
     if iteration == total:
         print()
 
-def extract_priority_phrase(text: str, lang: str = "en") -> str:
+def extract_priority_phrase(text: str) -> str:
     """
-    Extract a key phrase from assistant response based on language.
+    Extract a key phrase from assistant response.
     """
 
-    if lang == "fr":
-        primary_patterns = [
-            r'\b(spécialisée dans|spécialisant dans|y compris)\s+[^.!?,"]+'
-        ]
-        secondary_patterns = [
-            r'\b(une entreprise réputée|un leader|une entreprise qui|un\s+[^.!?,"]*?leader dans)\s+[^.!?,"]+'
-        ]
-    else:  # default to English
-        primary_patterns = [
-            r'\b(specializes in|specializing in|including)\s+[^.!?,"]+'
-        ]
-        secondary_patterns = [
-            r'\b(a reputable|a leading|a company that|a\s+[^.!?,"]*?leader in)\s+[^.!?,"]+'
-        ]
+    primary_patterns = [
+        r'\b(specializes in|specializing in|including)\s+[^.!?,"]+'
+    ]
+    
+    secondary_patterns = [
+        r'\b(a reputable|a leading|a company that|a\s+[^.!?,"]*?leader in)\s+[^.!?,"]+'
+    ]
+        
 
     for pattern in primary_patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
@@ -47,10 +41,9 @@ def extract_priority_phrase(text: str, lang: str = "en") -> str:
     return None
 
 
-def generate_summaries(descriptions: list[str], lang: str = "en", max_retries: int = 3) -> list[str]:
+def generate_summaries(descriptions: list[str], max_retries: int = 3) -> list[str]:
     """
-    Generate one-sentence summaries for a list of company descriptions,
-    using either English or French prompting based on `lang`.
+    Generate one-sentence summaries for a list of company descriptions.
     """
     pipe = pipeline(
         "text-generation",
@@ -64,20 +57,12 @@ def generate_summaries(descriptions: list[str], lang: str = "en", max_retries: i
     for idx, description in enumerate(descriptions):
         clean_description = re.sub(r'\s+', ' ', description)
 
-        if lang == "fr":
-            system_msg = "Tu es un assistant qui génère des phrases d'introduction pour des lettres de motivation à partir de descriptions d'entreprise."
-            user_msg = (
-                "Crée une phrase qui commence par "
-                "\"Je suis impatient de commencer mon stage au sein de votre entreprise, qui est spécialisée dans\" "
-                f"à partir de la description suivante : \"{clean_description}\""
-            )
-        else:  # default to English
-            system_msg = "You are a chatbot that generates introductory phrases for cover letters based on company descriptions."
-            user_msg = (
-                "Create a sentence beginning with "
-                "\"I'm looking forward to starting my work placement with your company, which specializes in\" "
+        system_msg = "You are a chatbot that generates introductory phrases for cover letters based on company descriptions."
+        user_msg = (
+            "Create a sentence beginning with "
+            "\"I'm looking forward to starting my work placement with your company, which specializes in\" "
                 f"based on the following description: \"{clean_description}\""
-            )
+        )
 
         messages = [
             {"role": "system", "content": system_msg},
@@ -107,7 +92,7 @@ def generate_summaries(descriptions: list[str], lang: str = "en", max_retries: i
                 assistant_match = re.search(r'<\|assistant\|>(.*)', generated_text, flags=re.DOTALL)
                 assistant_response = assistant_match.group(1).strip() if assistant_match else generated_text.strip()
 
-                extracted_text = extract_priority_phrase(assistant_response, lang=lang)
+                extracted_text = extract_priority_phrase(assistant_response)
                 if not extracted_text:
                     time.sleep(0.5)
             except Exception as e:
@@ -128,7 +113,6 @@ def generate_summaries_extra(yaml_file, json_file_email, json_file_metadata, jso
         config = yaml.safe_load(f)
 
     # Récupérer les variables
-    lang = config.get("lang", "")
     with open(json_file_metadata, "r", encoding="utf-8") as f:
         metadata = json.load(f)
     company_about_texts = metadata.get("company_about_texts", [])
@@ -148,7 +132,7 @@ def generate_summaries_extra(yaml_file, json_file_email, json_file_metadata, jso
             valid_indexes.append(i)
 
     # Générer les résumés uniquement pour les entrées avec email non vide
-    generated_summaries = generate_summaries(valid_texts, lang=lang)
+    generated_summaries = generate_summaries(valid_texts)
     
     # Réinsérer les résumés aux bons index, sinon chaîne vide
     summaries = ["" for _ in company_about_texts]

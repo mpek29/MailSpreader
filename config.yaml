@@ -1,7 +1,4 @@
-linkedin_email: "example.user@gmail.com"
-linkedin_password: "ChangeMe123!"
-total_pages: 2
-base_search_url: "https://www.linkedin.com/search/results/companies/?companyHqGeo=%5B%2290009680%22%5D&companySize=%5B%22D%22%2C%22E%22%2C%22F%22%2C%22G%22%5D&origin=FACETED_SEARCH&page="
-company_item_selector: "li.dvxnUloFpOSTNrzSqezMnxjmRKLNztMNWEkY"
-company_link_selector: "a.mdpAqWXcsYVoLayGsqIUZitQXyigbdUOLEI"
-lang: "en"
+linkedin_email: "pasco.florian.pro@gmail.com"
+linkedin_password: "Ailledefeu854."
+total_pages: 73
+base_search_url: "https://www.linkedin.com/search/results/companies/?companyHqGeo=%5B%2290009680%22%5D&companySize=%5B%22C%22%2C%22D%22%2C%22E%22%2C%22F%22%2C%22G%22%2C%22H%22%2C%22I%22%5D&industryCompanyVertical=%5B%2296%22%2C%2270%22%2C%228%22%2C%222458%22%2C%224%22%2C%223198%22%2C%223226%22%2C%223238%22%2C%223216%22%2C%223231%22%2C%223203%22%2C%223233%22%5D&origin=FACETED_SEARCH&page="
