@@ -108,7 +108,7 @@ def generate_summaries(descriptions: list[str], max_retries: int = 3) -> list[st
 
     return summaries
 
-def generate_summaries_extra(yaml_file, json_file_email, json_file_metadata, json_file_summaries):
+def generate_summaries_extra(yaml_file, json_file_metadata, json_file_summaries):
     with open(yaml_file, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
@@ -117,33 +117,44 @@ def generate_summaries_extra(yaml_file, json_file_email, json_file_metadata, jso
         metadata = json.load(f)
     company_about_texts = metadata.get("company_about_texts", [])
 
-    # Récupérer la liste des URLs
-    with open(json_file_email, "r", encoding="utf-8") as f:
-        emaildata = json.load(f)
+    # Generate summaries only for entries with non-empty email addresses
+    generated_summaries = generate_summaries(company_about_texts)
 
-    company_emails = emaildata.get("extracted_emails", [])
-
-    # Préparer les textes valides et leur index
-    valid_texts = []
-    valid_indexes = []
-    for i, (email, about_text) in enumerate(zip(company_emails, company_about_texts)):
-        if email.strip():
-            valid_texts.append(about_text)
-            valid_indexes.append(i)
-
-    # Générer les résumés uniquement pour les entrées avec email non vide
-    generated_summaries = generate_summaries(valid_texts)
-    
-    # Réinsérer les résumés aux bons index, sinon chaîne vide
-    summaries = ["" for _ in company_about_texts]
-    for idx, summary in zip(valid_indexes, generated_summaries):
-        summaries[idx] = summary
-
-    # Préparer les données finales
+    # Prepare final data
     data = {
-        "summaries": summaries
+        "summaries": generated_summaries
     }
 
     # Sauvegarder en JSON
     with open(json_file_summaries, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def translate_json(input_path: str, output_path: str):
+    """
+    Reads a JSON file with a ‘summaries’ key (list of texts), translates each text into French, then saves the result in a new JSON file.
+    """
+
+    with open(input_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+
+    if "summaries" not in data:
+        raise ValueError("Le JSON ne contient pas la clé 'summaries'.")
+
+    # Prepare the translation pipeline
+    translator = pipeline("translation", model="Helsinki-NLP/opus-mt-en-fr")
+
+    # Translate each text
+    translated_summaries = []
+    for idx, text in enumerate(data["summaries"]):
+        traduction = translator(text)[0]["translation_text"]
+        translated_summaries.append(traduction)
+        print_progress_bar(iteration=idx + 1, total=len(data["summaries"]), prefix="Summarizing")
+
+    # Create a new dictionary for the translated JSON
+    translated_data = {"summaries": translated_summaries}
+
+    # Save to the new JSON file
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(translated_data, f, ensure_ascii=False, indent=2)

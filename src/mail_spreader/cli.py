@@ -35,12 +35,22 @@ def profil_url_to_metadata_json(
     extract(yaml_file, json_file_profil, json_file_metadata="metadata.json")
 
 @app.command()
-def metadata_json_to_email_json(
+def metadata_json_to_email_json_auto(
     json_file_metadata: Path = typer.Argument(..., help="Input JSON file"),
     json_file_email: Path = typer.Option(..., "--output", "-o", help="Output JSON file")
 ):
-    """Use metadata json to make a JSON of email"""
-    from .parser import extract_contact_emails as parser
+    """Use metadata JSON to make automatically a JSON of email"""
+    from .parser import extract_contact_emails_auto as parser
+
+    parser(json_file_metadata, json_file_email)
+
+@app.command()
+def metadata_json_to_email_json_manual(
+    json_file_metadata: Path = typer.Argument(..., help="Input JSON file"),
+    json_file_email: Path = typer.Option(..., "--output", "-o", help="Output JSON file")
+):
+    """Use metadata JSON to make with the help of an operator a JSON of email"""
+    from .parser import extract_contact_emails_manual as parser
 
     parser(json_file_metadata, json_file_email)
 
@@ -48,13 +58,22 @@ def metadata_json_to_email_json(
 def metadata_json_to_summaries_json(
     yaml_file: Path = typer.Argument(..., help="YAML config file"),
     json_file_metadata: Path = typer.Argument(..., help="Input JSON file"),
-    json_file_email: Path = typer.Argument(..., help="Input JSON file"),
     json_file_summaries: Path = typer.Option(..., "--output", "-o", help="Output JSON file")
 ):
-    """Use metadata json to make a JSON of summaries"""
+    """Use metadata JSON to make a JSON of summaries"""
     from .summarizer import generate_summaries_extra as summarizer
 
-    summarizer(yaml_file, json_file_email, json_file_metadata, json_file_summaries)
+    summarizer(yaml_file, json_file_metadata, json_file_summaries)
+
+@app.command()
+def summaries_json_en_to_fr(
+    json_file_en: Path = typer.Argument(..., help="Input JSON file"),
+    json_file_fr: Path = typer.Option(..., "--output", "-o", help="Output JSON file")
+):
+    """Use summaries JSON to make a JSON of summaries in french"""
+    from .summarizer import translate_json as trans
+
+    trans(json_file_en, json_file_fr)
 
 @app.command()
 def metadata_email_json_to_spreadsheet(
@@ -63,7 +82,7 @@ def metadata_email_json_to_spreadsheet(
     json_file_summaries: Path = typer.Argument(..., help="Input JSON file"),
     csv_file: Path = typer.Option(..., "--output", "-o", help="Output CSV file")
 ):
-    """Use metadata json to make a JSON of email"""
+    """Use a lot of JSON to make a spreadsheet of all the different data"""
     from .export import export_to_spreadsheet as export
 
     export(json_file_metadata, json_file_email, json_file_summaries, csv_file)

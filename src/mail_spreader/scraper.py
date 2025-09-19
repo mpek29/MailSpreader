@@ -22,8 +22,8 @@ def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length:
 
 def login(driver,email,password):
     driver.get("https://www.linkedin.com/checkpoint/lg/sign-in-another-account")
-    print("login starting")
-    # Attendre que l'élément soit présent si nécessaire
+    print("Login starting...")
+
     time.sleep(duration)
 
     username_input = driver.find_element(By.ID, "username")
@@ -36,13 +36,13 @@ def login(driver,email,password):
     login_button = driver.find_element(By.CSS_SELECTOR, "button.btn__primary--large.from__button--floating")
     login_button.click()
 
-    print("login done")
+    print("Login done!")
 
     time.sleep(duration)
 
 def find_elements_with_text(driver):
     """
-    Ouvre une page avec undetected_chromedriver, recherche les <a> et <li> contenant un texte donné.
+    Opens a page with undetected_chromedriver, searches for <a> and <li> containing a given text.
     """
 
     url="https://www.linkedin.com/search/results/companies/?keywords=aveltek&origin=SWITCH_SEARCH_VERTICAL&sid=6Fj"
@@ -51,7 +51,7 @@ def find_elements_with_text(driver):
     driver.get(url)
     time.sleep(delay)
 
-    # Chercher dans les balises <a>
+    # Search within tags <a>
     a_elements = driver.find_elements(By.TAG_NAME, 'a')
     a_matches = [
         {
@@ -61,7 +61,7 @@ def find_elements_with_text(driver):
         for a in a_elements if search_text in a.text
     ]
 
-    # Chercher dans les balises <li>
+    # Search within <li> tags
     li_elements = driver.find_elements(By.TAG_NAME, 'li')
     li_matches = [
         {
@@ -76,7 +76,7 @@ def find_elements_with_text(driver):
     company_link_selector = a_matches[0]['classes'][0] if a_matches else None
     print("company_link_selector:", "a."+company_link_selector)
 
-    # Retourner les résultats
+    # Return results
     return {
         'a_tags': a_matches,
         'li_tags': li_matches
@@ -88,14 +88,13 @@ def linkedin_url_creator(yaml_file_industries, yaml_file_url="linkedin_url.yaml"
     with open(yaml_file_industries, "r", encoding="utf-8") as f:
         config_industries = yaml.safe_load(f)
 
-    mapping_file = "industries_ids.json"  # contient une liste d'objets { "id": "...", "value": "..." }
+    mapping_file = "industries_ids.json"
     with open(mapping_file, "r", encoding="utf-8") as mf:
-        mappings_list = json.load(mf)  # liste de dicts
+        mappings_list = json.load(mf)
 
     value_to_id = {item["value"]: item["id"] for item in mappings_list}
     list_industries = config_industries.get("list_industries", "")
 
-    # Construire le tableau et encoder (version Python)
     industry_ids = []
     for name in list_industries:
         id_val = value_to_id.get(name)
@@ -104,10 +103,8 @@ def linkedin_url_creator(yaml_file_industries, yaml_file_url="linkedin_url.yaml"
         else:
             industry_ids.append(str(id_val))
 
-    # Option 1: encoder comme JSON puis URI encodé
     encoded_industry = urllib.parse.quote(json.dumps(industry_ids))
 
-    # Construire l’URL finale
     url = (
         f"https://www.linkedin.com/search/results/companies/?"
         f"industryCompanyVertical={encoded_industry}"
@@ -122,7 +119,6 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
     with open(yaml_file, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    # Récupérer les variables
     base_search_url = config.get("base_search_url", "")
     total_pages = config.get("total_pages", 1)
     linkedin_email = config.get("linkedin_email", "")
@@ -164,10 +160,10 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
                     continue
 
             print_progress_bar(iteration=page_index, total=total_pages, prefix="Scraping Progress:", bar_length=40)
+
     finally:
         driver.quit()
 
-    # Préparer les données finales
     data = {
         "collected_profile_urls": collected_profile_urls
     }
@@ -179,12 +175,6 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
 def is_linkedin_profile_url(url: str) -> bool:
     """
     Validate if the URL corresponds to a LinkedIn personal or company profile.
-
-    Args:
-        url (str): URL to validate.
-
-    Returns:
-        bool: True if valid LinkedIn profile URL, False otherwise.
     """
     linkedin_profile_pattern = r"^https://www\.linkedin\.com/(in|company)/[^/]+/?$"
     return bool(re.match(linkedin_profile_pattern, url))
@@ -211,8 +201,7 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
     with open(json_file_profil, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # Récupérer la liste des URLs
-    profile_urls = data.get("collected_profile_urls", [])  # adapter la clé si nécessaire
+    profile_urls = data.get("collected_profile_urls", [])
     
     try:
         for idx, profile_url in enumerate(profile_urls, start=1):
@@ -253,13 +242,11 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
     finally:
         driver.quit()
 
-    # Préparer les données finales
     data = {
         "company_names": company_names,
         "company_websites": company_websites,
         "company_about_texts": company_about_texts
     }
 
-    # Sauvegarder en JSON
     with open(json_file_metadata, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

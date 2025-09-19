@@ -9,8 +9,8 @@ def is_google_captcha_url(url: str) -> bool:
 
 def handle_manual_captcha(driver):
     if is_google_captcha_url(driver.current_url):
-        print("[!] CAPTCHA Google détecté.")
-        print("Veuillez le résoudre dans le navigateur, puis appuyez sur Entrée ici pour continuer...")
+        print("[!] Google CAPTCHA detected.")
+        print("Please solve it in the browser, then press Enter here to continue...")
         input()
         
 def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length: int = 50) -> None:
@@ -22,12 +22,11 @@ def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length:
     if iteration == total:
         print()
 
-def extract_contact_emails(json_file_metadata, json_file_email="email.json"):
+def extract_contact_emails_auto(json_file_metadata, json_file_email="email.json"):
     with open(json_file_metadata, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # Récupérer la liste des URLs
-    website_urls = data.get("company_websites", [])  # adapter la clé si nécessaire
+    website_urls = data.get("company_websites", [])
 
     extracted_emails = []
 
@@ -146,11 +145,69 @@ def extract_contact_emails(json_file_metadata, json_file_email="email.json"):
 
     driver.quit()
 
-    # Préparer les données finales
+    # Prepare the final data
     data = {
         "extracted_emails": extracted_emails
     }
 
-    # Sauvegarder en JSON
+    # Save as JSON
+    with open(json_file_email, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def extract_contact_emails_manual(json_file_metadata, json_file_email="email.json"):
+    with open(json_file_metadata, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    website_urls = data.get("company_websites", [])
+
+    extracted_emails = []
+
+    options = uc.ChromeOptions()
+    options.headless = False
+
+    driver = uc.Chrome(options=options)
+    driver.get("https://www.google.com")
+    handle_manual_captcha(driver)
+
+    for i in range(len(website_urls)):
+        url = website_urls[i]
+        normalized_url = url if url.startswith(("http://", "https://")) else f"http://{url}"
+        parsed_url = urlparse(normalized_url)
+        netloc_with_www = parsed_url.netloc.split(':')[0]
+        netloc_no_www = re.sub(r"^www\.", "", netloc_with_www)
+
+        found_email = []
+        
+        # Étape 1 : Fallback Google
+        fallback_queries = f'intext:"@{netloc_no_www}"'
+        try:
+            driver.get(f"https://www.google.com/search?q={fallback_queries}")
+            handle_manual_captcha(driver)
+            new_found_email = input('Email trouvé sur Google ? (email/n) : ').strip()
+            if new_found_email!="n" or new_found_email!="N":
+                found_email.append(new_found_email)
+                
+        except Exception:
+            pass
+
+        # Étape 2 : Website
+        try:
+            driver.get(website_urls[i])
+            new_found_email = input('Email trouvé sur le site ? (email/n) : ').strip()
+            if new_found_email!="n" or new_found_email!="N":
+                found_email.append(new_found_email)
+                
+        except Exception:
+            pass
+
+        extracted_emails.append(found_email)
+        print_progress_bar(iteration=i+1, total=len(website_urls), prefix="Extract email Progress:")
+
+    driver.quit()
+
+    data = {
+        "extracted_emails": extracted_emails
+    }
+
     with open(json_file_email, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
