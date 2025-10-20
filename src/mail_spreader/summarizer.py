@@ -108,9 +108,7 @@ def generate_summaries(descriptions: list[str], max_retries: int = 3) -> list[st
 
     return summaries
 
-def generate_summaries_extra(yaml_file, json_file_metadata, json_file_summaries):
-    with open(yaml_file, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+def generate_summaries_extra(json_file_metadata, json_file_summaries):
 
     # Récupérer les variables
     with open(json_file_metadata, "r", encoding="utf-8") as f:

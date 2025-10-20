@@ -11,6 +11,7 @@ def export_to_spreadsheet(json_file_metadata, json_file_email, json_file_summari
         metadata_json = json.load(f)
 
     names = metadata_json.get("company_names", [])
+    websites = metadata_json.get("company_websites", [])
 
     with open(json_file_summaries, "r", encoding="utf-8") as f:
         summaries_json = json.load(f)
@@ -24,6 +25,6 @@ def export_to_spreadsheet(json_file_metadata, json_file_email, json_file_summari
 
     with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
-        writer.writerow(["Company Name", "Business Summary", "Email"])
-        for name, summary, email in zip(names, summaries, emails):
-            writer.writerow([name, summary, email])
+        writer.writerow(["Company Name", "Business Summary", "Email", "Website"])
+        for name, summary, email, website in zip(names, summaries, emails, websites):
+            writer.writerow([name, summary, email, website])

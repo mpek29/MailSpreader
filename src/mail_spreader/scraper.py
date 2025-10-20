@@ -9,7 +9,7 @@ import undetected_chromedriver as uc
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
-duration = 15
+duration = 1
 
 def print_progress_bar(iteration: int, total: int, prefix: str = "", bar_length: int = 50) -> None:
     progress_fraction = iteration / total
@@ -24,7 +24,7 @@ def login(driver,email,password):
     driver.get("https://www.linkedin.com/checkpoint/lg/sign-in-another-account")
     print("Login starting...")
 
-    time.sleep(duration)
+    time.sleep(10)
 
     username_input = driver.find_element(By.ID, "username")
     username_input.send_keys(email)
@@ -33,12 +33,35 @@ def login(driver,email,password):
     password_input = driver.find_element(By.ID, "password")
     password_input.send_keys(password)
 
+    time.sleep(10)
+
     login_button = driver.find_element(By.CSS_SELECTOR, "button.btn__primary--large.from__button--floating")
     login_button.click()
 
     print("Login done!")
 
-    time.sleep(duration)
+    time.sleep(30)
+
+def get_total_pages_for_url(driver, base_url, delay=3):
+    """
+    Ouvre une page avec undetected_chromedriver et retourne
+    le plus grand numéro de page trouvé dans la pagination.
+    """
+    driver.get(base_url)
+    time.sleep(delay)  # attendre que le JS charge le contenu
+
+    # Récupérer tous les <li> ayant l'attribut data-test-pagination-page-btn
+    li_elements = driver.find_elements(By.CSS_SELECTOR, "li[data-test-pagination-page-btn]")
+
+    # Extraire les valeurs numériques
+    page_numbers = []
+    for li in li_elements:
+        val = li.get_attribute("data-test-pagination-page-btn")
+        if val and val.isdigit():
+            page_numbers.append(int(val))
+
+    # Retourner la valeur maximale
+    return max(page_numbers) if page_numbers else None
 
 def find_elements_with_text(driver):
     """
@@ -114,18 +137,43 @@ def linkedin_url_creator(yaml_file_industries, yaml_file_url="linkedin_url.yaml"
     with open(yaml_file_url, "w", encoding="utf-8") as fy:
         fy.write("base_search_url: " + json.dumps(url) + "\n")
 
-def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_urls.json"):
+def linkedin_list_urls_creator(yaml_file_industries, yaml_file_url="linkedin_url.yaml"):
+    """Create a list of LinkedIn company search URLs, one for each industry"""
+
+    # Load industries from the YAML file
+    with open(yaml_file_industries, "r", encoding="utf-8") as f:
+        config_industries = yaml.safe_load(f)
+
+    # Load the industry ID mappings
+    mapping_file = "industries_ids.json"
+    with open(mapping_file, "r", encoding="utf-8") as mf:
+        mappings_list = json.load(mf)
+
+    value_to_id = {item["value"]: item["id"] for item in mappings_list}
+    list_industries = config_industries.get("list_industries", [])
+
+    urls = []
+    for name in list_industries:
+        id_val = value_to_id.get(name)
+        if id_val is None:
+            print(f"Warning: no mapping found for '{name}'")
+            continue
+        
+        encoded_industry = urllib.parse.quote(json.dumps([str(id_val)]))
+        url = (
+            f"https://www.linkedin.com/search/results/companies/?"
+            f"industryCompanyVertical={encoded_industry}"
+            f"&origin=FACETED_SEARCH&sid=_ay"
+        )
+        urls.append(url)
+
+    # Save the list of URLs to a YAML file
+    with open(yaml_file_url, "w", encoding="utf-8") as fy:
+        yaml.dump({"search_urls": urls}, fy, allow_unicode=True)
+
+def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_password):
     """Use LinkedinIn url to make a JSON of LinkedIn company profile URLs"""
-    with open(yaml_file, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-
-    base_search_url = config.get("base_search_url", "")
-    total_pages = config.get("total_pages", 1)
-    linkedin_email = config.get("linkedin_email", "")
-    linkedin_password = config.get("linkedin_password", "")
-
     collected_profile_urls = []
-    paginated_urls = [f"{base_search_url}{page}" for page in range(1, total_pages + 1)]
 
     options = uc.ChromeOptions()
     options.headless = True
@@ -135,6 +183,9 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
     driver = uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 
     login(driver, linkedin_email,linkedin_password)
+
+    total_pages = get_total_pages_for_url(driver, base_search_url, duration)
+    paginated_urls = [f"{base_search_url}{page}" for page in range(1, total_pages + 1)]
 
     results = find_elements_with_text(driver)
     company_item_selector = "li."+results['li_tags'][0]['classes'][0] if results['li_tags'] else None
@@ -150,6 +201,7 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
             except NoSuchElementException:
                 company_elements = []
 
+            count_before = len(collected_profile_urls)
             for element in company_elements:
                 try:
                     link_element = element.find_element(By.CSS_SELECTOR, company_link_selector)
@@ -158,26 +210,22 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
                         collected_profile_urls.append(href)
                 except NoSuchElementException:
                     continue
+            count_after = len(collected_profile_urls)
+            scraped_this_page = count_after - count_before
 
-            print_progress_bar(iteration=page_index, total=total_pages, prefix="Scraping Progress:", bar_length=40)
+            print_progress_bar(
+                iteration=page_index,
+                total=total_pages,
+                prefix=f"Scraping Progress: |  Data scraped on this page: {scraped_this_page}",
+                bar_length=40
+            )
 
     finally:
         driver.quit()
 
-    data = {
-        "collected_profile_urls": collected_profile_urls
-    }
+    return collected_profile_urls
 
-    # Sauvegarder en JSON
-    with open(json_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-def is_linkedin_profile_url(url: str) -> bool:
-    """
-    Validate if the URL corresponds to a LinkedIn personal or company profile.
-    """
-    linkedin_profile_pattern = r"^https://www\.linkedin\.com/(in|company)/[^/]+/?$"
-    return bool(re.match(linkedin_profile_pattern, url))
+    
 
 def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="metadata.json"):
     """Extract company names, websites, and about section text from LinkedIn profiles."""
@@ -193,7 +241,7 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
     company_about_texts = []
 
     options = uc.ChromeOptions()
-    options.headless = True
+    options.headless = False
     driver = uc.Chrome(options=options)
 
     login(driver,linkedin_email,linkedin_password)
@@ -203,11 +251,12 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
 
     profile_urls = data.get("collected_profile_urls", [])
     
+    import time as _time
+    start_time = _time.time()
     try:
         for idx, profile_url in enumerate(profile_urls, start=1):
+            iter_start = _time.time()
             profile_url = profile_url.strip()
-            if not is_linkedin_profile_url(profile_url):
-                continue
 
             about_page_url = profile_url.rstrip("/") + "/about/"
             driver.get(about_page_url)
@@ -217,8 +266,10 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
             try:
                 heading_element = driver.find_element(By.TAG_NAME, "h1")
                 company_names.append(heading_element.text)
+                name = heading_element.text
             except NoSuchElementException:
                 company_names.append("")
+                name = ""
 
             # Extract company website URL
             try:
@@ -238,7 +289,17 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
             except NoSuchElementException:
                 company_about_texts.append("")
 
-            print_progress_bar(iteration=idx, total=len(profile_urls), prefix="Extraction Progress:")
+            elapsed = _time.time() - start_time
+            avg_time = elapsed / idx
+            remaining = (len(profile_urls) - idx) * avg_time
+            eta_h, rem = divmod(remaining, 3600)
+            eta_m, eta_s = divmod(rem, 60)
+            elapsed_h, elapsed_rem = divmod(elapsed, 3600)
+            elapsed_m, elapsed_s = divmod(elapsed_rem, 60)
+            prefix = (f"Name: {name} | "
+                      f"Elapsed: {int(elapsed_h):02d}:{int(elapsed_m):02d}:{int(elapsed_s):02d} | "
+                      f"ETA: {int(eta_h):02d}:{int(eta_m):02d}:{int(eta_s):02d} | ")
+            print_progress_bar(iteration=idx, total=len(profile_urls), prefix=prefix)
     finally:
         driver.quit()
 
