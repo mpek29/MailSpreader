@@ -171,31 +171,56 @@ def linkedin_list_urls_creator(yaml_file_industries, yaml_file_url="linkedin_url
     with open(yaml_file_url, "w", encoding="utf-8") as fy:
         yaml.dump({"search_urls": urls}, fy, allow_unicode=True)
 
-def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_password):
-    """Use LinkedinIn url to make a JSON of LinkedIn company profile URLs"""
+def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_password, duration=5, max_retries=3):
+    """Scrape LinkedIn company profile URLs with automatic Chrome restart on timeout."""
     collected_profile_urls = []
 
-    options = uc.ChromeOptions()
-    options.headless = True
-    # Explicitly set Chrome binary location (update path if needed)
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
-    driver = uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+    def init_driver():
+        options = uc.ChromeOptions()
+        options.headless = True
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-gpu")
+        return uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 
-    login(driver, linkedin_email,linkedin_password)
+    driver = init_driver()
+    login(driver, linkedin_email, linkedin_password)
 
     total_pages = get_total_pages_for_url(driver, base_search_url, duration)
     paginated_urls = [f"{base_search_url}{page}" for page in range(1, total_pages + 1)]
 
     results = find_elements_with_text(driver)
-    company_item_selector = "li."+results['li_tags'][0]['classes'][0] if results['li_tags'] else None
-    company_link_selector = "a."+results['a_tags'][0]['classes'][0] if results['a_tags'] else None
+    company_item_selector = "li." + results['li_tags'][0]['classes'][0] if results['li_tags'] else None
+    company_link_selector = "a." + results['a_tags'][0]['classes'][0] if results['a_tags'] else None
 
     try:
         for page_index, url in enumerate(paginated_urls, start=1):
-            driver.get(url)
-            time.sleep(duration)  # Adjust wait as necessary for page load
+            retries = 0
+            page_loaded = False
 
+            while retries < max_retries and not page_loaded:
+                try:
+                    driver.set_page_load_timeout(20)
+                    driver.get(url)
+                    page_loaded = True
+                except TimeoutException:
+                    print(f"[!] Timeout sur {url}, redémarrage du driver (tentative {retries+1}/{max_retries})")
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                    driver = init_driver()
+                    login(driver, linkedin_email, linkedin_password)
+                    retries += 1
+                except WebDriverException as e:
+                    print(f"[!] Erreur WebDriver : {e}")
+                    retries += 1
+                    time.sleep(2)
+
+            if not page_loaded:
+                print(f"[x] Impossible de charger {url} après {max_retries} tentatives, on passe à la suivante.")
+                continue
+
+            time.sleep(duration)
             try:
                 company_elements = driver.find_elements(By.CSS_SELECTOR, company_item_selector)
             except NoSuchElementException:
@@ -210,6 +235,7 @@ def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_p
                         collected_profile_urls.append(href)
                 except NoSuchElementException:
                     continue
+
             count_after = len(collected_profile_urls)
             scraped_this_page = count_after - count_before
 
@@ -221,7 +247,10 @@ def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_p
             )
 
     finally:
-        driver.quit()
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
     return collected_profile_urls
 
