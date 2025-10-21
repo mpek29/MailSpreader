@@ -8,7 +8,7 @@ name = "mail_spreader"
 version = "0.1.0"
 description = "Automate LinkedIn-based mailings"
 authors = [
-  { name = "Florian Pasco"}
+  { name = "Florian Pasco" }
 ]
 dependencies = [
   "jinja2",
@@ -25,4 +25,9 @@ mail-spreader = "mail_spreader.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-mail_spreader = ["templates/*.typ", "templates/*.html", "templates/img/*.png"]
+mail_spreader = [
+    "templates/*.typ",
+    "templates/*.html",
+    "templates/img/*.png",
+    "industries_ids.json"
+]
