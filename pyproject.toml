@@ -6,22 +6,21 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mail_spreader"
 version = "0.1.0"
-description = "Tools to automate LinkedIn-based mailings"
-
+description = "Automate LinkedIn-based mailings"
+authors = [
+  { name = "Florian Pasco"}
+]
 dependencies = [
+  "jinja2",
   "pyyaml",
-  "typer",  # retirer l'extra [all]
-  "undetected-chromedriver",
-  "selenium",
-  "torch",
-  "transformers",
-  "regex",
-  "sympy",
-  "scikit-learn"
+  "typer[all]"
 ]
 
 [project.scripts]
-mail-spreader = "mail_spreader.cli:app"  # pointer vers le module réel de ton package
+grader-tools = "mail_spreader.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+mail_spreader = ["templates/*.typ", "templates/*.html", "templates/img/*.png"]

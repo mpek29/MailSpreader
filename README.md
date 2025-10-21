@@ -45,13 +45,13 @@ mail-spreader [OPTIONS] COMMAND [ARGS]...
 ### Convert industries YAML into LinkedIn URLs
 
 ```bash
-mail-spreader list-industries-to-linkedin-url industries.yaml -o urls.yaml
+mail-spreader list-industries-to-linkedin-url .\templates\job\electronics_industries.yaml -o urls.yaml
 ```
 
 ### Convert LinkedIn URLs into JSON
 
 ```bash
-mail-spreader linkedin-url-to-profil-json config.yaml -o profiles.json
+mail-spreader linkedin-url-to-profil-json .\templates\job\electronics_industries.yaml -o urls.yaml
 ```
 
 ### Convert profiles JSON into metadata JSON
