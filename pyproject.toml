@@ -29,5 +29,5 @@ mail_spreader = [
     "templates/*.typ",
     "templates/*.html",
     "templates/img/*.png",
-    "industries_ids.json"
+    "*.json"
 ]
