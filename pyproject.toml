@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-grader-tools = "mail_spreader.cli:app"
+mail-spreader = "mail_spreader.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
