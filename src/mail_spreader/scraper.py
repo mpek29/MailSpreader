@@ -269,7 +269,12 @@ def scrape_linkedin_company_profiles(yaml_file, json_file):
     if total_pages is None:
         total_pages = 1
 
-    paginated_urls = [f"{base_search_url}{page}" for page in range(1, total_pages + 1)]
+    paginated_urls = []
+
+    for url in base_search_url:
+        total_pages = get_total_pages_for_url(driver, url, duration)  # pass a single string
+        for page in range(1, total_pages + 1):
+            paginated_urls.append(f"{url}&page={page}")
 
     results = find_elements_with_text(driver)
     company_item_selector = "li."+results['li_tags'][0]['classes'][0] if results['li_tags'] else None
