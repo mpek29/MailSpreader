@@ -195,7 +195,11 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
     linkedin_password = config.get("linkedin_password", "")
 
     collected_profile_urls = []
-    paginated_urls = [f"{base_search_url}{page}" for page in range(1, total_pages + 1)]
+    paginated_urls = []
+    for url in base_search_url:
+        for page in range(1, total_pages + 1):
+            # Append the correct page query parameter if needed
+            paginated_urls.append(f"{url}&page={page}")
 
     options = uc.ChromeOptions()
     options.headless = True
