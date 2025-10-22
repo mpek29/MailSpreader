@@ -202,7 +202,7 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
             paginated_urls.append(f"{url}&page={page}")
 
     options = uc.ChromeOptions()
-    options.headless = True
+    options.headless = False
     # Explicitly set Chrome binary location (update path if needed)
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-gpu")
