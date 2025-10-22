@@ -212,6 +212,7 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
 
     try:
         for page_index, url in enumerate(paginated_urls, start=1):
+            url = url.replace("*", "%2A")
             print(url)
             driver.get(url)
             time.sleep(duration)  # Adjust wait as necessary for page load
