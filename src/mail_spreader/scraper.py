@@ -181,47 +181,102 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
     with open(json_file_metadata, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_urls.json"):
-    """Use LinkedinIn url to make a JSON of LinkedIn company profile URLs"""
-    with open(yaml_file, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+def get_total_pages_for_url(driver, base_url, delay=3):
+    """
+    Ouvre une page avec undetected_chromedriver et retourne
+    le plus grand numéro de page trouvé dans la pagination.
+    """
+    driver.get(base_url)
+    time.sleep(delay)  # attendre que le JS charge le contenu
 
-    # Récupérer les variables
-    base_search_url = config.get("base_search_url", "")
-    total_pages = config.get("total_pages", 1)
-    company_item_selector = config.get("company_item_selector", "")
-    company_link_selector = config.get("company_link_selector", "")
-    linkedin_email = config.get("linkedin_email", "")
-    linkedin_password = config.get("linkedin_password", "")
+    # Récupérer tous les <li> ayant l'attribut data-test-pagination-page-btn
+    li_elements = driver.find_elements(By.CSS_SELECTOR, "li[data-test-pagination-page-btn]")
 
+    # Extraire les valeurs numériques
+    page_numbers = []
+    for li in li_elements:
+        val = li.get_attribute("data-test-pagination-page-btn")
+        if val and val.isdigit():
+            page_numbers.append(int(val))
+
+    # Retourner la valeur maximale
+    return max(page_numbers) if page_numbers else None
+
+def find_elements_with_text(driver):
+    """
+    Opens a page with undetected_chromedriver, searches for <a> and <li> containing a given text.
+    """
+
+    url="https://www.linkedin.com/search/results/companies/?keywords=aveltek&origin=SWITCH_SEARCH_VERTICAL&sid=6Fj"
+    delay=2
+    search_text="AvelTek"
+    driver.get(url)
+    time.sleep(delay)
+
+    # Search within tags <a>
+    a_elements = driver.find_elements(By.TAG_NAME, 'a')
+    a_matches = [
+        {
+            'text': a.text.strip(),
+            'classes': a.get_attribute("class").split()
+        }
+        for a in a_elements if search_text in a.text
+    ]
+
+    # Search within <li> tags
+    li_elements = driver.find_elements(By.TAG_NAME, 'li')
+    li_matches = [
+        {
+            'text': li.text.strip(),
+            'classes': li.get_attribute("class").split()
+        }
+        for li in li_elements if search_text in li.text
+    ]
+    company_item_selector = li_matches[0]['classes'][0] if li_matches else None
+    print("company_item_selector:", "li."+company_item_selector)
+
+    company_link_selector = a_matches[0]['classes'][0] if a_matches else None
+    print("company_link_selector:", "a."+company_link_selector)
+
+    # Return results
+    return {
+        'a_tags': a_matches,
+        'li_tags': li_matches
+    }
+
+def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_password):
     collected_profile_urls = []
-    paginated_urls = []
-    for url in base_search_url:
-        for page in range(1, total_pages + 1):
-            # Append the correct page query parameter if needed
-            paginated_urls.append(f"{url}&page={page}")
 
     options = uc.ChromeOptions()
     options.headless = False
-    # Explicitly set Chrome binary location (update path if needed)
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-gpu")
     driver = uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 
-    login(driver, linkedin_email,linkedin_password)
+    duration = 3  # wait time
+    login(driver, linkedin_email, linkedin_password)
+
+    total_pages = get_total_pages_for_url(driver, base_search_url, duration)
+    if total_pages is None:
+        total_pages = 1
+
+    paginated_urls = [f"{base_search_url}{page}" for page in range(1, total_pages + 1)]
+
+    results = find_elements_with_text(driver)
+    company_item_selector = "li."+results['li_tags'][0]['classes'][0] if results['li_tags'] else None
+    company_link_selector = "a."+results['a_tags'][0]['classes'][0] if results['a_tags'] else None
 
     try:
         for page_index, url in enumerate(paginated_urls, start=1):
-            url = url.replace("*", "%2A")
-            print(url)
             driver.get(url)
-            time.sleep(duration)  # Adjust wait as necessary for page load
+            time.sleep(duration)
 
             try:
                 company_elements = driver.find_elements(By.CSS_SELECTOR, company_item_selector)
             except NoSuchElementException:
                 company_elements = []
 
+            count_before = len(collected_profile_urls)
             for element in company_elements:
                 try:
                     link_element = element.find_element(By.CSS_SELECTOR, company_link_selector)
@@ -230,16 +285,17 @@ def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_url
                         collected_profile_urls.append(href)
                 except NoSuchElementException:
                     continue
+            count_after = len(collected_profile_urls)
+            scraped_this_page = count_after - count_before
 
-            print_progress_bar(iteration=page_index, total=total_pages, prefix="Scraping Progress:", bar_length=40)
+            print_progress_bar(
+                iteration=page_index,
+                total=total_pages,
+                prefix=f"Scraping Progress: |  Data scraped on this page: {scraped_this_page}",
+                bar_length=40
+            )
+
     finally:
         driver.quit()
 
-    # Préparer les données finales
-    data = {
-        "collected_profile_urls": collected_profile_urls
-    }
-
-    # Sauvegarder en JSON
-    with open(json_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    return collected_profile_urls
