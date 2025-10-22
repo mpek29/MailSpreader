@@ -272,6 +272,7 @@ def scrape_linkedin_company_profiles(yaml_file, json_file):
     paginated_urls = []
 
     for url in base_search_url:
+        url = url.replace("*", "%2A") 
         total_pages = get_total_pages_for_url(driver, url, duration)  # pass a single string
         for page in range(1, total_pages + 1):
             paginated_urls.append(f"{url}&page={page}")
