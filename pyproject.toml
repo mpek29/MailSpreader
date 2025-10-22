@@ -15,7 +15,9 @@ dependencies = [
   "pyyaml",
   "typer[all]",
   "selenium",
-  "certifi"
+  "certifi",
+  "setuptools>=68.0",
+  "wheel"
 ]
 
 [project.scripts]
