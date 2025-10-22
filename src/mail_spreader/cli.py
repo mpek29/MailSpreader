@@ -35,5 +35,15 @@ def profil_url_to_metadata_json(
 
     extract(yaml_file, json_file_profil, json_file_metadata)
 
+@app.command()
+def linkedin_url_to_profil_json(
+    yaml_file: Path = typer.Argument(..., help="YAML config file"),
+    json_file: Path = typer.Option(..., "--output", "-o", help="Output JSON file")
+):
+    """Use LinkedinIn url to make a JSON of entreprise profile URLs"""
+    from .scraper import scrape_linkedin_company_profiles as scrap
+
+    scrap(yaml_file, json_file)
+
 if __name__ == "__main__":
     app()

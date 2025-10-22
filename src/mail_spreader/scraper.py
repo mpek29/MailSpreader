@@ -180,3 +180,60 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
 
     with open(json_file_metadata, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+def scrape_linkedin_company_profiles(yaml_file, json_file="collected_profile_urls.json"):
+    """Use LinkedinIn url to make a JSON of LinkedIn company profile URLs"""
+    with open(yaml_file, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    # Récupérer les variables
+    base_search_url = config.get("base_search_url", "")
+    total_pages = config.get("total_pages", 1)
+    company_item_selector = config.get("company_item_selector", "")
+    company_link_selector = config.get("company_link_selector", "")
+    linkedin_email = config.get("linkedin_email", "")
+    linkedin_password = config.get("linkedin_password", "")
+
+    collected_profile_urls = []
+    paginated_urls = [f"{base_search_url}{page}" for page in range(1, total_pages + 1)]
+
+    options = uc.ChromeOptions()
+    options.headless = True
+    # Explicitly set Chrome binary location (update path if needed)
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")
+    driver = uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+
+    login(driver, linkedin_email,linkedin_password)
+
+    try:
+        for page_index, url in enumerate(paginated_urls, start=1):
+            driver.get(url)
+            time.sleep(duration)  # Adjust wait as necessary for page load
+
+            try:
+                company_elements = driver.find_elements(By.CSS_SELECTOR, company_item_selector)
+            except NoSuchElementException:
+                company_elements = []
+
+            for element in company_elements:
+                try:
+                    link_element = element.find_element(By.CSS_SELECTOR, company_link_selector)
+                    href = link_element.get_attribute("href")
+                    if href:
+                        collected_profile_urls.append(href)
+                except NoSuchElementException:
+                    continue
+
+            print_progress_bar(iteration=page_index, total=total_pages, prefix="Scraping Progress:", bar_length=40)
+    finally:
+        driver.quit()
+
+    # Préparer les données finales
+    data = {
+        "collected_profile_urls": collected_profile_urls
+    }
+
+    # Sauvegarder en JSON
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
