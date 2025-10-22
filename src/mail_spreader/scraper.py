@@ -244,7 +244,7 @@ def find_elements_with_text(driver):
         'li_tags': li_matches
     }
 
-def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_password):
+def scrape_linkedin_company_profiles(yaml_file, json_file):
     collected_profile_urls = []
 
     options = uc.ChromeOptions()
@@ -254,6 +254,15 @@ def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_p
     driver = uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 
     duration = 3  # wait time
+
+    with open(yaml_file, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    # Récupérer les variables
+    linkedin_email = config.get("linkedin_email", "")
+    linkedin_password = config.get("linkedin_password", "")
+    base_search_url = config.get("base_search_url", "")
+
     login(driver, linkedin_email, linkedin_password)
 
     total_pages = get_total_pages_for_url(driver, base_search_url, duration)
@@ -298,4 +307,11 @@ def scrape_linkedin_company_profiles(base_search_url, linkedin_email, linkedin_p
     finally:
         driver.quit()
 
-    return collected_profile_urls
+    # Préparer les données finales
+    data = {
+        "collected_profile_urls": collected_profile_urls
+    }
+
+    # Sauvegarder en JSON
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
