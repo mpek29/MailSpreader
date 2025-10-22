@@ -24,5 +24,16 @@ def list_industries_to_linkedin_list_urls(
 
     creator(yaml_file_industries, yaml_file_url)
 
+@app.command()
+def profil_url_to_metadata_json(
+    yaml_file: Path = typer.Argument(..., help="YAML config file"),
+    json_file_profil: Path = typer.Argument(..., help="Input JSON file"),
+    json_file_metadata: Path = typer.Option(..., "--output", "-o", help="Output JSON file")
+):
+    """Use Entreprise profile URLs to make a JSON of their metadata"""
+    from .scraper import extract_company_metadata as extract
+
+    extract(yaml_file, json_file_profil, json_file_metadata)
+
 if __name__ == "__main__":
     app()
