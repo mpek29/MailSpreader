@@ -5,8 +5,11 @@ import importlib.resources
 import undetected_chromedriver as uc
 import time
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import re
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import psutil
 
 duration = 15
 
@@ -109,30 +112,84 @@ def linkedin_list_urls_creator(yaml_file_industries, yaml_file_url="linkedin_url
     with open(yaml_file_url, "w", encoding="utf-8") as fy:
         yaml.dump({"search_urls": urls}, fy, allow_unicode=True)
 
+import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
+
 def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="metadata.json"):
-    """Extract company names, websites, and about section text from LinkedIn profiles."""
+    """Extract company names, websites, and about section text from LinkedIn profiles with retry and timeout handling."""
+
+    MAX_PAGE_RETRIES = 3
+    MAX_DRIVER_RETRIES = 5
+    PAGE_LOAD_TIMEOUT = 45
+    SLEEP_BETWEEN_RETRIES = 10
+    WAIT_BETWEEN_PAGES = 5
+
+    def cleanup_chrome():
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                if proc.info['name'] and "chrome" in proc.info['name'].lower():
+                    proc.terminate()
+            except Exception:
+                pass
+
+    def create_driver():
+        cleanup_chrome()
+        options = uc.ChromeOptions()
+        options.headless = True
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-dev-shm-usage")
+        try:
+            driver = uc.Chrome(
+                options=options,
+                version_main=141,
+                browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+            )
+            driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
+            return driver
+        except Exception as e:
+            print(f"[ERROR] Failed to create driver: {e}")
+            raise
+
+    def safe_get(driver, url):
+        for attempt in range(1, MAX_DRIVER_RETRIES + 1):
+            try:
+                driver.get(url)
+                return driver
+            except (TimeoutException, WebDriverException) as e:
+                print(f"[WARN] Driver error on {url} (attempt {attempt}/{MAX_DRIVER_RETRIES}): {e}")
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+                time.sleep(SLEEP_BETWEEN_RETRIES)
+                try:
+                    driver = create_driver()
+                    login(driver, linkedin_email, linkedin_password)
+                except Exception as e2:
+                    print(f"[ERROR] Failed to restart driver: {e2}")
+                continue
+        print(f"[ERROR] Skipping {url} after {MAX_DRIVER_RETRIES} failed driver attempts.")
+        return driver
+
     with open(yaml_file, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    # Récupérer les variables
     linkedin_email = config.get("linkedin_email", "")
     linkedin_password = config.get("linkedin_password", "")
+
+    with open(json_file_profil, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    profile_urls = data.get("collected_profile_urls", [])
 
     company_names = []
     company_websites = []
     company_about_texts = []
 
-    options = uc.ChromeOptions()
-    options.headless = True
-    driver = uc.Chrome(options=options)
+    driver = create_driver()
+    login(driver, linkedin_email, linkedin_password)
 
-    login(driver,linkedin_email,linkedin_password)
-
-    with open(json_file_profil, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    profile_urls = data.get("collected_profile_urls", [])
-    
     try:
         for idx, profile_url in enumerate(profile_urls, start=1):
             profile_url = profile_url.strip()
@@ -140,46 +197,76 @@ def extract_company_metadata(yaml_file, json_file_profil, json_file_metadata="me
                 continue
 
             about_page_url = profile_url.rstrip("/") + "/about/"
-            driver.get(about_page_url)
-            time.sleep(duration)  # Adjust wait as necessary for page load
 
-            # Extract company name (from <h1>)
-            try:
-                heading_element = driver.find_element(By.TAG_NAME, "h1")
-                company_names.append(heading_element.text)
-            except NoSuchElementException:
-                company_names.append("")
+            success = False
+            for attempt in range(1, MAX_PAGE_RETRIES + 1):
+                try:
+                    driver = safe_get(driver, about_page_url)
+                    time.sleep(WAIT_BETWEEN_PAGES)
 
-            # Extract company website URL
-            try:
-                website_dd = driver.find_element(By.CSS_SELECTOR, "dd.mb4.t-black--light.text-body-medium")
-                website_link = website_dd.find_element(By.CSS_SELECTOR, "a.link-without-visited-state")
-                company_websites.append(website_link.get_attribute("href"))
-            except NoSuchElementException:
-                company_websites.append("")
+                    try:
+                        heading_element = driver.find_element(By.TAG_NAME, "h1")
+                        company_names.append(heading_element.text)
+                    except NoSuchElementException:
+                        company_names.append("")
 
-            # Extract about section paragraph text
-            try:
-                about_paragraph = driver.find_element(
-                    By.CSS_SELECTOR,
-                    "p.break-words.white-space-pre-wrap.t-black--light.text-body-medium",
-                )
-                company_about_texts.append(about_paragraph.text)
-            except NoSuchElementException:
-                company_about_texts.append("")
+                    try:
+                        website_dd = driver.find_element(By.CSS_SELECTOR, "dd.mb4.t-black--light.text-body-medium")
+                        website_link = website_dd.find_element(By.CSS_SELECTOR, "a.link-without-visited-state")
+                        company_websites.append(website_link.get_attribute("href"))
+                    except NoSuchElementException:
+                        company_websites.append("")
 
-            print_progress_bar(iteration=idx, total=len(profile_urls), prefix="Extraction Progress:")
+                    try:
+                        about_paragraph = driver.find_element(
+                            By.CSS_SELECTOR,
+                            "p.break-words.white-space-pre-wrap.t-black--light.text-body-medium",
+                        )
+                        company_about_texts.append(about_paragraph.text)
+                    except NoSuchElementException:
+                        company_about_texts.append("")
+
+                    success = True
+                    break
+
+                except Exception as e:
+                    print(f"[WARN] Attempt {attempt}/{MAX_PAGE_RETRIES} failed for {about_page_url}: {e}")
+                    time.sleep(SLEEP_BETWEEN_RETRIES)
+                    if attempt == MAX_PAGE_RETRIES:
+                        print(f"[ERROR] Skipping {about_page_url} after repeated failures.")
+                        company_names.append("")
+                        company_websites.append("")
+                        company_about_texts.append("")
+                        try:
+                            driver.quit()
+                        except Exception:
+                            pass
+                        driver = create_driver()
+                        login(driver, linkedin_email, linkedin_password)
+
+            print_progress_bar(
+                iteration=idx,
+                total=len(profile_urls),
+                prefix="Extraction Progress:",
+                bar_length=40
+            )
+
     finally:
-        driver.quit()
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
     data = {
         "company_names": company_names,
         "company_websites": company_websites,
         "company_about_texts": company_about_texts
     }
-
     with open(json_file_metadata, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"[INFO] Results written to {json_file_metadata}")
+
+
 
 def get_total_pages_for_url(driver, base_url, delay=3):
     """
@@ -201,6 +288,9 @@ def get_total_pages_for_url(driver, base_url, delay=3):
 
     # Retourner la valeur maximale
     return max(page_numbers) if page_numbers else None
+
+
+
 
 def find_elements_with_text(driver):
     """
@@ -245,79 +335,200 @@ def find_elements_with_text(driver):
     }
 
 def scrape_linkedin_company_profiles(yaml_file, json_file):
+    """Scrape LinkedIn company profiles with retry, driver restart, process cleanup, and deduplication."""
+    import json, time, yaml, psutil, signal
+    import undetected_chromedriver as uc
+    from selenium.webdriver.common.by import By
+    from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
+
+    MAX_PAGE_RETRIES = 3
+    MAX_DRIVER_RETRIES = 5
+    PAGE_LOAD_TIMEOUT = 45
+    SLEEP_BETWEEN_RETRIES = 10
+
     collected_profile_urls = []
 
-    options = uc.ChromeOptions()
-    options.headless = False
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
-    driver = uc.Chrome(options=options, browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+    # -------------------------------------------------------
+    # Utilitaires
+    # -------------------------------------------------------
 
-    duration = 3  # wait time
+    def cleanup_chrome():
+        """Tuer tous les processus Chrome pour repartir propre."""
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                if proc.info['name'] and "chrome" in proc.info['name'].lower():
+                    proc.terminate()
+            except Exception:
+                pass
+
+    def create_driver():
+        """Créer un driver propre avec timeout défini."""
+        cleanup_chrome()
+        options = uc.ChromeOptions()
+        options.headless = True
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-dev-shm-usage")
+        try:
+            driver = uc.Chrome(
+                options=options,
+                version_main=141,
+                browser_executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+            )
+            driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
+            return driver
+        except Exception as e:
+            print(f"[ERROR] Failed to create driver: {e}")
+            raise
+
+    def safe_get(driver, url):
+        """Tente de charger une page avec plusieurs essais et recrée le driver si nécessaire."""
+        for attempt in range(1, MAX_DRIVER_RETRIES + 1):
+            try:
+                driver.get(url)
+                return driver
+            except (TimeoutException, WebDriverException) as e:
+                print(f"[WARN] Driver error on {url} (attempt {attempt}/{MAX_DRIVER_RETRIES}): {e}")
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+                time.sleep(SLEEP_BETWEEN_RETRIES)
+                try:
+                    driver = create_driver()
+                    login(driver, linkedin_email, linkedin_password)
+                except Exception as e2:
+                    print(f"[ERROR] Failed to restart driver: {e2}")
+                continue
+        print(f"[ERROR] Skipping {url} after {MAX_DRIVER_RETRIES} failed driver attempts.")
+        return driver
+
+    # -------------------------------------------------------
+    # Lecture de la configuration
+    # -------------------------------------------------------
 
     with open(yaml_file, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    # Récupérer les variables
     linkedin_email = config.get("linkedin_email", "")
     linkedin_password = config.get("linkedin_password", "")
-    base_search_url = config.get("base_search_url", "")
+    base_search_urls = config.get("base_search_url", [])
+    duration = config.get("duration", 5)
 
+    if isinstance(base_search_urls, str):
+        base_search_urls = [base_search_urls]
+
+    driver = create_driver()
     login(driver, linkedin_email, linkedin_password)
 
-    total_pages = get_total_pages_for_url(driver, base_search_url, duration)
-    if total_pages is None:
-        total_pages = 1
-
-    paginated_urls = []
-
-    for url in base_search_url:
-        url = url.replace("*", "%2A") 
-        total_pages = get_total_pages_for_url(driver, url, duration)  # pass a single string
-        for page in range(1, total_pages + 1):
-            paginated_urls.append(f"{url}&page={page}")
-
     results = find_elements_with_text(driver)
-    company_item_selector = "li."+results['li_tags'][0]['classes'][0] if results['li_tags'] else None
-    company_link_selector = "a."+results['a_tags'][0]['classes'][0] if results['a_tags'] else None
+    company_item_selector = "li." + results['li_tags'][0]['classes'][0] if results['li_tags'] else None
+    company_link_selector = "a." + results['a_tags'][0]['classes'][0] if results['a_tags'] else None
+
+    # -------------------------------------------------------
+    # Boucle principale de scraping
+    # -------------------------------------------------------
 
     try:
-        for page_index, url in enumerate(paginated_urls, start=1):
-            driver.get(url)
-            time.sleep(duration)
+        for base_search_url in base_search_urls:
+            print(f"\nProcessing base search URL: {base_search_url}")
 
-            try:
-                company_elements = driver.find_elements(By.CSS_SELECTOR, company_item_selector)
-            except NoSuchElementException:
-                company_elements = []
+            total_pages = get_total_pages_for_url(driver, base_search_url, duration)
+            if not total_pages:
+                print("[WARN] Could not determine total pages for this URL.")
+                continue
 
-            count_before = len(collected_profile_urls)
-            for element in company_elements:
+            paginated_urls = [f"{base_search_url}&page={page}" for page in range(1, total_pages + 1)]
+
+            for page_index, url in enumerate(paginated_urls, start=1):
+                success = False
+                scraped_this_page = 0
+
                 try:
-                    link_element = element.find_element(By.CSS_SELECTOR, company_link_selector)
-                    href = link_element.get_attribute("href")
-                    if href:
-                        collected_profile_urls.append(href)
-                except NoSuchElementException:
-                    continue
-            count_after = len(collected_profile_urls)
-            scraped_this_page = count_after - count_before
+                    for attempt in range(1, MAX_PAGE_RETRIES + 1):
+                        driver = safe_get(driver, url)
+                        time.sleep(duration)
 
-            print_progress_bar(
-                iteration=page_index,
-                total=total_pages,
-                prefix=f"Scraping Progress: |  Data scraped on this page: {scraped_this_page}",
-                bar_length=40
-            )
+                        try:
+                            company_elements = driver.find_elements(By.CSS_SELECTOR, company_item_selector)
+                        except NoSuchElementException:
+                            company_elements = []
+
+                        count_before = len(collected_profile_urls)
+                        for element in company_elements:
+                            try:
+                                link_element = element.find_element(By.CSS_SELECTOR, company_link_selector)
+                                href = link_element.get_attribute("href")
+                                if href:
+                                    collected_profile_urls.append(href)
+                            except NoSuchElementException:
+                                continue
+
+                        scraped_this_page = len(collected_profile_urls) - count_before
+
+                        if scraped_this_page > 0:
+                            success = True
+                            break
+                        else:
+                            print(f"[WARN] Page {page_index}: 0 results, retry {attempt}/{MAX_PAGE_RETRIES}...")
+                            time.sleep(SLEEP_BETWEEN_RETRIES)
+
+                            if attempt == MAX_PAGE_RETRIES:
+                                print(f"[INFO] Restarting driver after empty results on page {page_index}.")
+                                try:
+                                    driver.quit()
+                                except Exception:
+                                    pass
+                                driver = create_driver()
+                                login(driver, linkedin_email, linkedin_password)
+                                try:
+                                    driver = safe_get(driver, url)
+                                    time.sleep(duration)
+                                    company_elements = driver.find_elements(By.CSS_SELECTOR, company_item_selector)
+                                    count_after = len(collected_profile_urls)
+                                    if count_after == count_before:
+                                        print(f"[ERROR] Page {page_index}: still no results after retries and driver restart.")
+                                    else:
+                                        success = True
+                                        break
+                                except Exception as e:
+                                    print(f"[FATAL] safe_get failed on retry for page {page_index}: {e}")
+                                    break
+
+                except Exception as e:
+                    print(f"[FATAL] Exception during scraping page {page_index}: {e}")
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                    driver = create_driver()
+                    login(driver, linkedin_email, linkedin_password)
+                    continue
+
+                if not success:
+                    print(f"[WARN] Skipping page {page_index} for {base_search_url} after multiple failures.")
+
+                print_progress_bar(
+                    iteration=page_index,
+                    total=total_pages,
+                    prefix=f"Scraping Progress (Current URL): |  Data scraped this page: {scraped_this_page}",
+                    bar_length=40
+                )
 
     finally:
-        driver.quit()
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
-    # Préparer les données finales
-    data = {
-        "collected_profile_urls": collected_profile_urls
-    }
+    # -------------------------------------------------------
+    # Nettoyage final (suppression des doublons)
+    # -------------------------------------------------------
 
-    # Sauvegarder en JSON
+    collected_profile_urls = list(dict.fromkeys(collected_profile_urls))
+    print(f"[INFO] Deduplicated URLs count: {len(collected_profile_urls)}")
+
+    data = {"collected_profile_urls": collected_profile_urls}
     with open(json_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"[INFO] Results written to {json_file}")
