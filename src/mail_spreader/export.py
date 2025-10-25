@@ -50,3 +50,37 @@ def export_to_spreadsheet_without_summaries(json_file_metadata, json_file_email,
         writer.writerow(["Company Name", "Email", "Website"])
         for name, email, website in zip(names, emails, websites):
             writer.writerow([name, email, website])
+
+def filter_spreadsheet_interactively(input_csv: Path, output_csv: Path):
+    """
+    Lit un fichier CSV contenant les colonnes : Company Name, Email, Website.
+    Pour chaque ligne, demande à l'utilisateur s'il veut la conserver.
+    Écrit un nouveau CSV avec uniquement les lignes conservées.
+    """
+    dir_path = os.path.dirname(output_csv)
+    if dir_path:
+        os.makedirs(dir_path, exist_ok=True)
+
+    filtered_rows = []
+
+    with open(input_csv, newline='', encoding='utf-8') as infile:
+        reader = csv.DictReader(infile)
+        fieldnames = reader.fieldnames
+        if fieldnames is None:
+            raise ValueError("Le fichier CSV d'entrée ne contient pas d'en-têtes valides.")
+
+        for row in reader:
+            name = row.get("Company Name", "")
+            email = row.get("Email", "")
+            website = row.get("Website", "")
+            print(f"\nEntreprise : {name}\nEmail : {email}\nSite web : {website}")
+            choice = input("Conserver cette ligne ? (o/n) : ").strip().lower()
+            if choice == "o":
+                filtered_rows.append(row)
+
+    with open(output_csv, mode='w', newline='', encoding='utf-8') as outfile:
+        writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(filtered_rows)
+
+    print(f"\nNouveau fichier généré : {output_csv}")
