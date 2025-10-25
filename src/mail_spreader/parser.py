@@ -128,6 +128,16 @@ def build_driver_pool(proxies, max_pool_size=6, headless=False, user_agent_pool=
         drivers.append(drv)
     return drivers
 
+import json
+import re
+import random
+import time
+from urllib.parse import urlparse
+
+# Ces fonctions doivent déjà exister dans ton code :
+# build_google_search_url(), handle_manual_captcha(), build_driver_pool(), start_driver_with_proxy(), print_progress_bar()
+# Et DEFAULT_USER_AGENT_POOL doit être défini.
+
 def extract_contact_emails_auto(
     json_file_metadata,
     json_file_email="email.json",
@@ -254,7 +264,7 @@ def extract_contact_emails_auto(
 
     # Boucle principale sur les sites
     for i, url in enumerate(websites):
-        # Ignorer les entrées vides
+        # --- Vérification stricte pour ignorer les entrées vides ---
         if not url or not str(url).strip():
             extracted.append("")
             print_progress_bar(i + 1, len(websites))
@@ -269,6 +279,7 @@ def extract_contact_emails_auto(
             time.sleep(random.uniform(min_delay, max_delay))
             continue
 
+        # Normalisation
         normalized = url if url.startswith(("http://", "https://")) else f"http://{url}"
         parsed = urlparse(normalized)
         netloc = re.sub(r"^www\.", "", parsed.netloc.split(":")[0])
@@ -277,13 +288,14 @@ def extract_contact_emails_auto(
         # Étape 1 : page /contact/
         for s in ["https", "http"]:
             try:
-                driver.get(f"{s}://{parsed.netloc}/contact/")
-                time.sleep(random.uniform(2, 5))
-                found_email = extract_email_from_text(
-                    driver.find_element("tag name", "body").text
-                )
-                if found_email:
-                    break
+                if netloc:  # Sécurité supplémentaire
+                    driver.get(f"{s}://{netloc}/contact/")
+                    time.sleep(random.uniform(2, 5))
+                    found_email = extract_email_from_text(
+                        driver.find_element("tag name", "body").text
+                    )
+                    if found_email:
+                        break
             except:
                 pass
 
