@@ -173,5 +173,29 @@ def review_companes_website(
     
     review(input_file)
 
+@app.command()
+def metadata_email_json_to_spreadsheet(
+    json_file_metadata: Path = typer.Argument(..., help="Input JSON file"),
+    json_file_email: Path = typer.Argument(..., help="Input JSON file"),
+    json_file_summaries: Path = typer.Argument(..., help="Input JSON file"),
+    csv_file: Path = typer.Option(..., "--output", "-o", help="Output CSV file")
+):
+    """Use a lot of JSON to make a spreadsheet of all the different data"""
+    from .export import export_to_spreadsheet as export
+
+    export(json_file_metadata, json_file_email, json_file_summaries, csv_file)
+
+@app.command()
+def metadata_email_json_to_spreadsheet_without_summaries(
+    json_file_metadata: Path = typer.Argument(..., help="Input JSON file"),
+    json_file_email: Path = typer.Argument(..., help="Input JSON file"),
+    json_file_summaries: Path = typer.Argument(..., help="Input JSON file"),
+    csv_file: Path = typer.Option(..., "--output", "-o", help="Output CSV file")
+):
+    """Use a lot of JSON to make a spreadsheet of all the different data"""
+    from .export import export_to_spreadsheet_without_summaries as export
+
+    export(json_file_metadata, json_file_email, json_file_summaries, csv_file)
+
 if __name__ == "__main__":
     app()
