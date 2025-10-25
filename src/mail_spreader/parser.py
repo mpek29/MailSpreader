@@ -6,6 +6,8 @@ import json
 import random
 from .utils import build_google_search_url, DEFAULT_USER_AGENT_POOL
 import socket
+import typer
+import os
 
 def is_google_captcha_url(url: str) -> bool:
     return url.startswith("https://www.google.com/sorry/index?continue=")
