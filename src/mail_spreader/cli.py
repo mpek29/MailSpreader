@@ -1,7 +1,7 @@
 import typer
 from pathlib import Path
 import json
-
+import os
 app = typer.Typer(help="Mail Spreader - utilities to automate LinkedIn-based mailings",pretty_exceptions_enable=False)
 
 
