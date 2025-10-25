@@ -52,11 +52,11 @@ def export_to_spreadsheet_without_summaries(json_file_metadata, json_file_email,
         for name, email, website in zip(names, emails, websites):
             writer.writerow([name, email, website])
 
-def filter_spreadsheet_interactively(input_csv: Path, output_csv: Path):
+def filter_spreadsheet_with_browser(input_csv: Path, output_csv: Path):
     """
-    Lit un fichier CSV contenant les colonnes : Company Name, Email, Website.
-    Pour chaque ligne, demande à l'utilisateur s'il veut la conserver.
-    Écrit un nouveau CSV avec uniquement les lignes conservées.
+    Lit un CSV avec colonnes Company Name, Email, Website.
+    Ouvre chaque site web dans un navigateur et demande à l'utilisateur
+    s'il souhaite conserver la ligne. Écrit un nouveau CSV filtré.
     """
     dir_path = os.path.dirname(output_csv)
     if dir_path:
@@ -64,20 +64,37 @@ def filter_spreadsheet_interactively(input_csv: Path, output_csv: Path):
 
     filtered_rows = []
 
-    with open(input_csv, newline='', encoding='utf-8') as infile:
-        reader = csv.DictReader(infile)
-        fieldnames = reader.fieldnames
-        if fieldnames is None:
-            raise ValueError("Le fichier CSV d'entrée ne contient pas d'en-têtes valides.")
+    # Configuration Selenium pour Chrome
+    chrome_options = Options()
+    chrome_options.add_argument("--start-maximized")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-        for row in reader:
-            name = row.get("Company Name", "")
-            email = row.get("Email", "")
-            website = row.get("Website", "")
-            print(f"\nEntreprise : {name}\nEmail : {email}\nSite web : {website}")
-            choice = input("Conserver cette ligne ? (o/n) : ").strip().lower()
-            if choice == "o":
-                filtered_rows.append(row)
+    try:
+        with open(input_csv, newline='', encoding='utf-8') as infile:
+            reader = csv.DictReader(infile)
+            fieldnames = reader.fieldnames
+            if fieldnames is None:
+                raise ValueError("Le fichier CSV d'entrée ne contient pas d'en-têtes valides.")
+
+            for row in reader:
+                name = row.get("Company Name", "")
+                email = row.get("Email", "")
+                website = row.get("Website", "")
+
+                if website:
+                    print(f"\nOuverture du site web : {website}")
+                    try:
+                        driver.get(website)
+                    except Exception as e:
+                        print(f"Impossible d'ouvrir {website} : {e}")
+
+                print(f"\nEntreprise : {name}\nEmail : {email}\nSite web : {website}")
+                choice = input("Conserver cette ligne ? (o/n) : ").strip().lower()
+                if choice == "o":
+                    filtered_rows.append(row)
+
+    finally:
+        driver.quit()
 
     with open(output_csv, mode='w', newline='', encoding='utf-8') as outfile:
         writer = csv.DictWriter(outfile, fieldnames=fieldnames)
