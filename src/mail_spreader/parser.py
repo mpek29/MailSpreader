@@ -128,7 +128,6 @@ def build_driver_pool(proxies, max_pool_size=6, headless=False, user_agent_pool=
         drivers.append(drv)
     return drivers
 
-
 def extract_contact_emails_auto(
     json_file_metadata,
     json_file_email="email.json",
@@ -171,20 +170,22 @@ def extract_contact_emails_auto(
             "chrome-linux",
             "firefox-linux",
 
-            # Nouveaux UA aléatoires (peut être simulé)
+            # Nouveaux UA aléatoires
             "chrome-win-legacy",
             "chrome-mac-legacy",
             "firefox-win-legacy",
             "firefox-linux-legacy",
         ]
+
     if proxies is None:
         proxies = []
     if user_agent_pool is None:
         user_agent_pool = DEFAULT_USER_AGENT_POOL
 
-    # Rate limiting
+    # Limitation du taux de requêtes
     min_interval = 60.0 / requests_per_minute if requests_per_minute > 0 else 0
     last_request_time = 0
+
     def ensure_rate_limit():
         nonlocal last_request_time
         elapsed = time.time() - last_request_time
@@ -193,11 +194,17 @@ def extract_contact_emails_auto(
         last_request_time = time.time()
 
     # Création du pool de drivers
-    driver_pool = []
     if proxies:
-        driver_pool = build_driver_pool(proxies, max_pool_size=max_driver_pool_size, headless=headless, user_agent_pool=user_agent_pool)
+        driver_pool = build_driver_pool(
+            proxies,
+            max_pool_size=max_driver_pool_size,
+            headless=headless,
+            user_agent_pool=user_agent_pool,
+        )
     else:
-        drv = start_driver_with_proxy(None, headless=headless, user_agent=random.choice(user_agent_pool))
+        drv = start_driver_with_proxy(
+            None, headless=headless, user_agent=random.choice(user_agent_pool)
+        )
         drv.get("https://www.google.com")
         driver_pool = [drv]
 
@@ -212,11 +219,15 @@ def extract_contact_emails_auto(
         regex = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", re.I)
         matches = regex.findall(text)
         if not matches:
-            obf = re.compile(r"([a-zA-Z0-9._%+-]+)\s*<at>\s*([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", re.I)
+            obf = re.compile(
+                r"([a-zA-Z0-9._%+-]+)\s*<at>\s*([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", re.I
+            )
             matches = [f"{m[0]}@{m[1]}" for m in obf.findall(text)]
         if not matches:
             return ""
-        filtered = [e for e in matches if "sales" not in e.lower() and "@www." not in e.lower()]
+        filtered = [
+            e for e in matches if "sales" not in e.lower() and "@www." not in e.lower()
+        ]
         return filtered[0] if filtered else matches[0]
 
     # Lecture du JSON d’entrée
@@ -228,7 +239,9 @@ def extract_contact_emails_auto(
     # Recherche Google via driver
     def google_search_extract(driver, q, client=None):
         sel_client = client if client else random.choice(client_pool)
-        url = build_google_search_url(q, client=sel_client, include_tracking=include_tracking_in_search)
+        url = build_google_search_url(
+            q, client=sel_client, include_tracking=include_tracking_in_search
+        )
         ensure_rate_limit()
         try:
             driver.get(url)
@@ -239,44 +252,63 @@ def extract_contact_emails_auto(
         except Exception:
             return ""
 
-    # Boucle sur les sites
+    # Boucle principale sur les sites
     for i, url in enumerate(websites):
-        driver = get_driver_for_index(i)
-        if "linkedin.com" in url:
+        # Ignorer les entrées vides
+        if not url or not str(url).strip():
             extracted.append("")
-            print_progress_bar(i+1, len(websites))
+            print_progress_bar(i + 1, len(websites))
+            continue
+
+        driver = get_driver_for_index(i)
+
+        # Ignorer LinkedIn
+        if "linkedin.com" in url.lower():
+            extracted.append("")
+            print_progress_bar(i + 1, len(websites))
             time.sleep(random.uniform(min_delay, max_delay))
             continue
+
         normalized = url if url.startswith(("http://", "https://")) else f"http://{url}"
         parsed = urlparse(normalized)
         netloc = re.sub(r"^www\.", "", parsed.netloc.split(":")[0])
         found_email = ""
 
-        # Étape 1 : /contact/
+        # Étape 1 : page /contact/
         for s in ["https", "http"]:
             try:
                 driver.get(f"{s}://{parsed.netloc}/contact/")
                 time.sleep(random.uniform(2, 5))
-                found_email = extract_email_from_text(driver.find_element("tag name", "body").text)
-                if found_email: break
-            except: pass
+                found_email = extract_email_from_text(
+                    driver.find_element("tag name", "body").text
+                )
+                if found_email:
+                    break
+            except:
+                pass
 
-        # Étape 2 : Google hr@ / career@ / fallback
+        # Étape 2 : recherche Google (fallback)
         if not found_email or "sales" in found_email.lower() or "@www." in found_email.lower():
-            for q in [f'"{netloc} hr @"', f'"career @{netloc}"', f'intext:"@{netloc}"']:
+            for q in [
+                f'"{netloc} hr @"',
+                f'"career @{netloc}"',
+                f'intext:"@{netloc}"',
+            ]:
                 alt = google_search_extract(driver, q)
                 if alt and "sales" not in alt.lower() and "@www." not in alt.lower():
                     found_email = alt
                     break
 
         extracted.append(found_email)
-        print_progress_bar(i+1, len(websites))
+        print_progress_bar(i + 1, len(websites))
         time.sleep(random.uniform(min_delay, max_delay))
 
-    # Fermeture de tous les drivers
+    # Fermeture des drivers
     for d in driver_pool:
-        try: d.quit()
-        except: pass
+        try:
+            d.quit()
+        except:
+            pass
 
     # Sauvegarde JSON
     with open(json_file_email, "w", encoding="utf-8") as f:
