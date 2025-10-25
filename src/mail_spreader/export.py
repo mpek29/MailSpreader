@@ -1,6 +1,7 @@
 import os
 import json
 import csv
+from pathlib import Path
 
 def export_to_spreadsheet(json_file_metadata, json_file_email, json_file_summaries, csv_file):
     dir_path = os.path.dirname(csv_file)
