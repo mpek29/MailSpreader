@@ -52,7 +52,7 @@ def export_to_spreadsheet_without_summaries(json_file_metadata, json_file_email,
         for name, email, website in zip(names, emails, websites):
             writer.writerow([name, email, website])
 
-def filter_spreadsheet_with_browser(input_csv: Path, output_csv: Path):
+def filter_spreadsheet_interactively(input_csv: Path, output_csv: Path):
     """
     Lit un CSV avec colonnes Company Name, Email, Website.
     Ouvre chaque site web dans un navigateur et demande à l'utilisateur
