@@ -8,6 +8,7 @@ from .utils import build_google_search_url, DEFAULT_USER_AGENT_POOL
 import socket
 import typer
 import os
+import webbrowser
 
 def is_google_captcha_url(url: str) -> bool:
     return url.startswith("https://www.google.com/sorry/index?continue=")
@@ -355,3 +356,74 @@ def merge_extracted_email_jsons(input_folder, output_file="merged_emails.json"):
         json.dump({"extracted_emails": merged_emails}, f, ensure_ascii=False, indent=2)
 
     return {"extracted_emails": merged_emails, "output_file": output_path}
+
+def extract_companies_without_email(metadata_file, email_file, output_file="companies_without_mail.json"):
+    """
+    Identifie les entreprises dont l'email est vide et enregistre leurs informations dans un JSON dédié.
+    """
+    # Lecture des fichiers d'entrée
+    with open(metadata_file, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
+    with open(email_file, "r", encoding="utf-8") as f:
+        emails = json.load(f)
+
+    company_names = metadata.get("company_names", [])
+    company_websites = metadata.get("company_websites", [])
+    company_about = metadata.get("company_about_texts", [])
+    extracted_emails = emails.get("extracted_emails", [])
+
+    # Vérification de la cohérence des longueurs
+    n = min(len(company_names), len(company_websites), len(company_about), len(extracted_emails))
+
+    companies_without_mail = []
+    for i in range(n):
+        if extracted_emails[i] == "" and company_websites[i]:
+            companies_without_mail.append({
+                "name": company_names[i],
+                "website": company_websites[i],
+                "about": company_about[i],
+                "email": extracted_emails[i],
+            })
+
+    # Sauvegarde du résultat
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump({"companies_without_email": companies_without_mail}, f, ensure_ascii=False, indent=2)
+
+    return {"count": len(companies_without_mail), "output_file": output_file}
+
+
+def manual_review_companies(input_file):
+    """
+    Permet de consulter manuellement les sites listés dans companies_without_mail.json,
+    avec validation utilisateur avant de passer au suivant.
+    """
+    if not os.path.exists(input_file):
+        typer.echo(f"❌ Fichier introuvable : {input_file}")
+        raise typer.Exit(code=1)
+
+    with open(input_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    companies = data.get("companies_without_email", [])
+    if not companies:
+        typer.echo("Aucune entreprise à consulter.")
+        return
+
+    typer.echo(f"📋 {len(companies)} entreprises à vérifier.")
+    for i, company in enumerate(companies, 1):
+        name = company.get("name", "Nom inconnu")
+        site = company.get("website", "")
+        typer.echo(f"\n[{i}/{len(companies)}] {name}")
+        typer.echo(f"🔗 {site}")
+        if site.startswith("http"):
+            try:
+                webbrowser.open(site)
+            except Exception:
+                typer.echo("⚠️ Impossible d’ouvrir le navigateur automatiquement.")
+
+        input("Appuyez sur Entrée une fois que vous avez consulté le site...")
+
+        # Pause de confort
+        time.sleep(0.5)
+
+    typer.echo("✅ Revue manuelle terminée.")
