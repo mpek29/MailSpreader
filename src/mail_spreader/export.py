@@ -6,7 +6,7 @@ import typer
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+import undetected_chromedriver as uc
 
 def export_to_spreadsheet(json_file_metadata, json_file_email, json_file_summaries, csv_file):
     dir_path = os.path.dirname(csv_file)
@@ -72,7 +72,7 @@ def filter_spreadsheet_interactively(input_csv: Path, output_csv: Path):
     # Configuration Selenium pour Chrome
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    driver = uc.Chrome(options=options)
 
     try:
         with open(input_csv, newline='', encoding='utf-8') as infile:
