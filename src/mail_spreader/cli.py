@@ -134,5 +134,22 @@ def split_companies(
     typer.echo(f"Création terminée. Les fichiers sont dans {output_subdir}")
 
 
+@app.command()
+def merge_email_jsons(
+    input_folder: str = typer.Argument(..., help="Dossier contenant les fichiers JSON à fusionner."),
+    output_file: str = typer.Option("merged_emails.json", "--output", "-o", help="Nom du fichier JSON de sortie.")
+):
+    """
+    Fusionne tous les fichiers JSON du dossier spécifié en un seul.
+    """
+    from .parser import merge_extracted_email_jsons as merge
+
+    if not os.path.isdir(input_folder):
+        typer.echo(f"❌ Le dossier spécifié n'existe pas: {input_folder}")
+        raise typer.Exit(code=1)
+
+    result = merge(input_folder, output_file)
+    typer.echo(f"✅ Fusion terminée : {len(result['extracted_emails'])} emails sauvegardés dans {result['output_file']}.")
+
 if __name__ == "__main__":
     app()
