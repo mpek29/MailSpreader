@@ -151,5 +151,27 @@ def merge_email_jsons(
     result = merge(input_folder, output_file)
     typer.echo(f"✅ Fusion terminée : {len(result['extracted_emails'])} emails sauvegardés dans {result['output_file']}.")
 
+@app.command()
+def metadata_email_to_without_mail(
+    metadata_file: str = typer.Argument(..., help="Chemin vers metadata.json"),
+    email_file: str = typer.Argument(..., help="Chemin vers email.json"),
+    output_file: str = typer.Option("companies_without_mail.json", "--output", "-o", help="Fichier de sortie.")
+):
+    """Extrait les entreprises sans email depuis metadata.json et email.json."""
+    from .parser import extract_companies_without_email as extract
+
+    result = extract(metadata_file, email_file, output_file)
+    typer.echo(f"✅ {result['count']} entreprises sans email sauvegardées dans {result['output_file']}.")
+
+
+@app.command()
+def review_companes_website(
+    input_file: str = typer.Argument("companies_without_mail.json", help="Fichier contenant les entreprises à consulter.")
+):
+    """Ouvre chaque site d'entreprise sans email et attend validation manuelle."""
+    from .parser import manual_review_companies as review
+    
+    review(input_file)
+
 if __name__ == "__main__":
     app()
