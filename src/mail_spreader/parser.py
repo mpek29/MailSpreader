@@ -254,6 +254,8 @@ def extract_contact_emails_auto(
 
     # Boucle principale sur les sites
     for i, url in enumerate(websites):
+        print("nouvelle v")
+        print(url)
         # --- Vérification stricte pour ignorer les entrées vides ---
         if url=="":
             extracted.append("")
