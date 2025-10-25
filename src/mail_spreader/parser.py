@@ -128,16 +128,6 @@ def build_driver_pool(proxies, max_pool_size=6, headless=False, user_agent_pool=
         drivers.append(drv)
     return drivers
 
-import json
-import re
-import random
-import time
-from urllib.parse import urlparse
-
-# Ces fonctions doivent déjà exister dans ton code :
-# build_google_search_url(), handle_manual_captcha(), build_driver_pool(), start_driver_with_proxy(), print_progress_bar()
-# Et DEFAULT_USER_AGENT_POOL doit être défini.
-
 def extract_contact_emails_auto(
     json_file_metadata,
     json_file_email="email.json",
@@ -265,7 +255,7 @@ def extract_contact_emails_auto(
     # Boucle principale sur les sites
     for i, url in enumerate(websites):
         # --- Vérification stricte pour ignorer les entrées vides ---
-        if not url or not str(url).strip():
+        if url=="":
             extracted.append("")
             print_progress_bar(i + 1, len(websites))
             continue
