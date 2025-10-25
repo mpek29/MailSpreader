@@ -196,5 +196,18 @@ def metadata_email_json_to_spreadsheet_without_summaries(
 
     export(json_file_metadata, json_file_email, csv_file)
 
+@app.command()
+def filter_spreadsheet_interactively_cli(
+    input_csv: Path = typer.Argument(..., help="Input CSV file"),
+    output_csv: Path = typer.Option(..., "--output", "-o", help="Filtered output CSV file")
+):
+    """
+    Filtre un CSV existant ligne par ligne en demandant à l'utilisateur
+    s'il souhaite conserver chaque ligne.
+    """
+    from .export import filter_spreadsheet_interactively as filter_func
+
+    filter_func(input_csv, output_csv)
+
 if __name__ == "__main__":
     app()
