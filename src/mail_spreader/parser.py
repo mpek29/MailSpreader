@@ -255,7 +255,7 @@ def extract_contact_emails_auto(
     # Boucle principale sur les sites
     for i, url in enumerate(websites):
         # --- Vérification stricte pour ignorer les entrées vides ---
-        if url=="":
+        if url=="" or url.startswith("tel:"):
             extracted.append("")
             print_progress_bar(i + 1, len(websites))
             continue
