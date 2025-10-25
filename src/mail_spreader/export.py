@@ -70,8 +70,8 @@ def filter_spreadsheet_interactively(input_csv: Path, output_csv: Path):
     filtered_rows = []
 
     # Configuration Selenium pour Chrome
-    chrome_options = Options()
-    chrome_options.add_argument("--start-maximized")
+    options = uc.ChromeOptions()
+    options.headless = False
     driver = uc.Chrome(options=options)
 
     try:
