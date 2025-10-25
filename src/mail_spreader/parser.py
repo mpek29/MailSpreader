@@ -320,26 +320,36 @@ def extract_contact_emails_auto(
 
     return {"extracted_emails": extracted}
 
+
 def merge_extracted_email_jsons(input_folder, output_file="merged_emails.json"):
     """
-    Parcourt un dossier, lit tous les fichiers JSON contenant 'extracted_emails',
-    les fusionne en une seule liste, et sauvegarde le résultat.
+    Fusionne les fichiers emails_X.json dans l'ordre croissant de X.
+    Conserve les chaînes vides et l'ordre d'origine.
     """
+    # Récupérer les fichiers emails_X.json dans l'ordre numérique
+    json_files = []
+    for f in os.listdir(input_folder):
+        match = re.match(r"emails_(\d+)\.json$", f)
+        if match:
+            index = int(match.group(1))
+            json_files.append((index, f))
+    json_files.sort(key=lambda x: x[0])
+
     merged_emails = []
 
-    for filename in os.listdir(input_folder):
-        if filename.lower().endswith(".json"):
-            path = os.path.join(input_folder, filename)
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if isinstance(data, dict) and "extracted_emails" in data:
-                    merged_emails.extend(data["extracted_emails"])
-            except Exception as e:
-                typer.echo(f"⚠️ Erreur lors de la lecture de {filename}: {e}")
+    for index, filename in json_files:
+        path = os.path.join(input_folder, filename)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict) and "extracted_emails" in data:
+                merged_emails.extend(data["extracted_emails"])
+            else:
+                typer.echo(f"⚠️ {filename} ne contient pas de clé 'extracted_emails'")
+        except Exception as e:
+            typer.echo(f"⚠️ Erreur lors de la lecture de {filename}: {e}")
 
-    merged_emails = [e for e in dict.fromkeys(merged_emails) if e]
-
+    # Ne pas supprimer les vides, ne pas dédupliquer
     output_path = os.path.join(input_folder, output_file)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump({"extracted_emails": merged_emails}, f, ensure_ascii=False, indent=2)
