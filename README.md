@@ -26,6 +26,7 @@ mail-spreader [OPTIONS] COMMAND [ARGS]...
 * `--install-completion` → Install shell completion for the current shell  
 * `--show-completion` → Show shell completion script  
 * `--help` → Show this message and exit  
+ 
 
 ## Available Commands
 
@@ -44,21 +45,41 @@ mail-spreader [OPTIONS] COMMAND [ARGS]...
 
 ### Convert industries YAML into LinkedIn URLs
 
+This repository includes a collection of `.yaml` files that contain various industries available as filters on LinkedIn. These files, referred to as "list of industries files," enable users to target specific industries for job applications. You can find these files in the following directory: `src/mail_spreader/templates/job/`.
+
+To customize your experience, you have the option to create your own "list of industries" `.yaml` file to better suit your needs.
+
+The following command converts a specified industries `.yaml` file into a corresponding LinkedIn search URL. The generated URL will be saved in a file named `urls.yaml`.
+
 ```bash
 mail-spreader list-industries-to-linkedin-url .\templates\job\electronics_industries.yaml -o urls.yaml
 ```
 
+This command processes the electronics_industries.yaml file and creates a LinkedIn search URL that targets the specified industries.
+
+### Change the URL to your desired location
+
+The URL generated previously does not include a location filter. To customize it, simply open the URL and add your desired location.
+
+Next, you can add the updated URL along with your LinkedIn credentials to the `config.yaml` file, located in the following directory: `src/mail_spreader/templates`. For security reasons, consider creating a separate LinkedIn account to avoid potential bans.
+
+**Important**: Ensure that the total number of pages in your LinkedIn search does not exceed 100 pages. If your search generates more than 100 pages, you will need to split the LinkedIn search URL into multiple URLs. One effective approach is to create separate URLs for each industry, location if possible, available job etc...
+
+Once you have your URLs ready, you can add them to the `config.yaml` file in a YAML list format.
+
 ### Convert LinkedIn URLs into JSON
 
 ```bash
-mail-spreader linkedin-url-to-profil-json .\templates\job\electronics_industries.yaml -o urls.yaml
+mail-spreader linkedin-url-to-profil-json .\templates\config.yaml -o profiles.json
 ```
+Extracts each company's profile URL from the LinkedIn search results contained in `config.yaml` and saves them to the specified JSON file.
 
 ### Convert profiles JSON into metadata JSON
 
 ```bash
 mail-spreader profil-url-to-metadata-json config.yaml profiles.json -o metadata.json
 ```
+Extracts metadata from each company's LinkedIn profile URL — including company name, website, and company description.
 
 ### Split a large company dataset into multiple smaller JSON files
 
