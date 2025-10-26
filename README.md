@@ -72,7 +72,7 @@ Once you have your URLs ready, you can add them to the `config.yaml` file in a Y
 ```bash
 mail-spreader linkedin-url-to-profil-json .\templates\config.yaml -o profiles.json
 ```
-Extracts each company's profile URL from the LinkedIn search results contained in `config.yaml` and saves them to the specified JSON file.
+> Extracts each company's profile URL from the LinkedIn search results contained in `config.yaml` and saves them to the specified JSON file.
 
 ### Convert profiles JSON into metadata JSON
 
