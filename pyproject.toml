@@ -17,7 +17,8 @@ dependencies = [
   "selenium",
   "certifi",
   "setuptools>=68.0",
-  "wheel"
+  "wheel",
+  "tqdm"
 ]
 
 [project.scripts]
