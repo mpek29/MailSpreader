@@ -7,6 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 import undetected_chromedriver as uc
+from tqdm import tqdm
 
 def export_to_spreadsheet(json_file_metadata, json_file_email, json_file_summaries, csv_file):
     dir_path = os.path.dirname(csv_file)
@@ -62,6 +63,7 @@ def filter_spreadsheet_interactively(input_csv: Path, output_csv: Path):
     Lit un CSV avec colonnes Company Name, Email, Website.
     Ouvre chaque site web dans un navigateur et demande à l'utilisateur
     s'il souhaite conserver la ligne. Écrit un nouveau CSV filtré.
+    Affiche une barre de progression et le numéro de ligne.
     """
     dir_path = os.path.dirname(output_csv)
     if dir_path:
@@ -75,25 +77,33 @@ def filter_spreadsheet_interactively(input_csv: Path, output_csv: Path):
     driver = uc.Chrome(options=options)
 
     try:
+        # Lecture préalable pour compter les lignes (pour tqdm)
+        with open(input_csv, newline='', encoding='utf-8') as infile:
+            total_lines = sum(1 for _ in infile) - 1  # -1 pour l'en-tête
+
         with open(input_csv, newline='', encoding='utf-8') as infile:
             reader = csv.DictReader(infile)
             fieldnames = reader.fieldnames
             if fieldnames is None:
                 raise ValueError("Le fichier CSV d'entrée ne contient pas d'en-têtes valides.")
 
-            for row in reader:
+            # Barre de progression
+            for i, row in enumerate(tqdm(reader, total=total_lines, desc="Traitement des lignes", unit="ligne")):
+                current_line = i + 2  # +2 pour compter l'en-tête et commencer à 2
                 name = row.get("Company Name", "")
                 email = row.get("Email", "")
                 website = row.get("Website", "")
 
+                print(f"\n--- Ligne {current_line}/{total_lines + 1} ---")
+
                 if website:
-                    print(f"\nOuverture du site web : {website}")
+                    print(f"Ouverture du site web : {website}")
                     try:
                         driver.get(website)
                     except Exception as e:
                         print(f"Impossible d'ouvrir {website} : {e}")
 
-                print(f"\nEntreprise : {name}\nEmail : {email}\nSite web : {website}")
+                print(f"Entreprise : {name}\nEmail : {email}\nSite web : {website}")
                 choice = input("Conserver cette ligne ? (o/n) : ").strip().lower()
                 if choice == "o":
                     filtered_rows.append(row)
