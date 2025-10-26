@@ -55,7 +55,7 @@ The following command converts a specified industries `.yaml` file into a corres
 mail-spreader list-industries-to-linkedin-url .\templates\job\electronics_industries.yaml -o urls.yaml
 ```
 
-This command processes the electronics_industries.yaml file and creates a LinkedIn search URL that targets the specified industries.
+> This command processes the electronics_industries.yaml file and creates a LinkedIn search URL that targets the specified industries.
 
 ### Change the URL to your desired location
 
@@ -79,7 +79,7 @@ mail-spreader linkedin-url-to-profil-json .\templates\config.yaml -o profiles.js
 ```bash
 mail-spreader profil-url-to-metadata-json config.yaml profiles.json -o metadata.json
 ```
-Extracts metadata from each company's LinkedIn profile URL — including company name, website, and company description.
+> Extracts metadata from each company's LinkedIn profile URL — including company name, website, and company description.
 
 ### Split a large company dataset into multiple smaller JSON files
 
@@ -96,18 +96,23 @@ mail-spreader split-companies companies.json output_dir --chunk-size 50
 ```bash
 mail-spreader metadata-json-to-email-json-auto metadata.json -o emails.json
 ```
+> Searches each company's metadata for contact email addresses and saves the results to the specified JSON file automatically.
+
+**Important:** Websites (and Chrome) may present CAPTCHAs during the process. When a CAPTCHA appears, solve it in the browser and then press Enter in the terminal to continue the email search.
 
 ### Extract emails manually with operator assistance
 
 ```bash
 mail-spreader metadata-json-to-email-json-manual metadata.json -o emails.json
 ```
+> Same thing as before but manually.
 
 ### Generate business summaries
 
 ```bash
 mail-spreader metadata-json-to-summaries-json config.yaml metadata.json -o summaries.json
 ```
+> Generates a concise, human-readable summary of each company's "About" section using a small LLM — ideal for including in outreach emails.
 
 ### Translate summaries from English to French
 
@@ -120,6 +125,7 @@ mail-spreader summaries-json-en-to-fr summaries.json -o summaries_fr.json
 ```bash
 mail-spreader metadata-email-json-to-spreadsheet metadata.json emails.json summaries.json -o prospects.csv
 ```
+> Organises all the data for each company (name, summary, email) into a specified csv file ready for use.
 
 ## 🌟 License
 
