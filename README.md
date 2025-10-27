@@ -84,7 +84,7 @@ mail-spreader profil-url-to-metadata-json config.yaml profiles.json -o metadata.
 ### Split a large company dataset into multiple smaller JSON files
 
 ```bash
-mail-spreader split-companies companies.json output_dir --chunk-size 50
+mail-spreader split-companies metadata.json output_dir --chunk-size 50
 ```
 
 > This command splits a JSON file containing  
